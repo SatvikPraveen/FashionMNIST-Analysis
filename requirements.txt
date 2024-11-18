@@ -26,4 +26,4 @@ tqdm
 plotly         # For interactive plots (Optional)
 
 # Generating summary of the models
-torchsummary
+torch-summary
