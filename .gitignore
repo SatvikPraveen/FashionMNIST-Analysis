@@ -17,8 +17,11 @@ venv/
 *.log
 *.env
 
+# Ignore the entire data folder
+data/
+
 # Data files (CSV files generated in data_preparation folder)
-data_preparation/*.csv
+data_preparation/
 
 # Ignore specific temporary or backup files
 *.bak
