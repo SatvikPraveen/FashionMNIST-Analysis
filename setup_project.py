@@ -5,6 +5,8 @@ folders = [
     "data",
     "data_preparation",
     "models",
+    "models/all_models",
+    "models/best_model",
     "tests",
     "eda",
     "figures",
