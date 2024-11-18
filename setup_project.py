@@ -12,6 +12,9 @@ folders = [
     "eda",
     "figures",
     "figures/EDA_plots",
+    "figures/modeling_plots",
+    "figures/fine_tuning_plots",
+    "figures/evaluation_plots"
     "notebooks"
 ]
 
