@@ -24,3 +24,6 @@ tqdm
 
 # Enhanced Visualization (Optional)
 plotly         # For interactive plots (Optional)
+
+# Generating summary of the models
+torchinfo

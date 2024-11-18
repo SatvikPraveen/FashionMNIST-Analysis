@@ -27,6 +27,10 @@ data_preparation/
 *.bak
 *.swp
 
+# Ignore ResNet model files
+models/trained_models/resnet_model.pth
+models/trained_models/resnet_model_weights.pth
+
 # Uncomment these lines if you want to ignore figures and processed CSV files
 # figures/
 # data_preparation/
