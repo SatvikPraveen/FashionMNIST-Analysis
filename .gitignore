@@ -1,0 +1,32 @@
+# System files
+.DS_Store
+
+# Python cache and compiled files
+__pycache__/
+*.pyc
+
+# Virtual environment folder (updated to match your environment name)
+envf/
+venv/
+.env/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Log files and environment configuration
+*.log
+*.env
+
+# Ignore the entire data folder
+data/
+
+# Data files (CSV files generated in data_preparation folder)
+data_preparation/
+
+# Ignore specific temporary or backup files
+*.bak
+*.swp
+
+# Uncomment these lines if you want to ignore figures and processed CSV files
+# figures/
+# data_preparation/
