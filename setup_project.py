@@ -7,6 +7,7 @@ folders = [
     "models",
     "models/all_models",
     "models/best_model",
+    "models/best_model_weights",
     "tests",
     "eda",
     "figures",
