@@ -5,10 +5,16 @@ folders = [
     "data",
     "data_preparation",
     "models",
+    "models/all_models",
+    "models/best_model",
+    "models/best_model_weights",
     "tests",
     "eda",
     "figures",
     "figures/EDA_plots",
+    "figures/modeling_plots",
+    "figures/fine_tuning_plots",
+    "figures/evaluation_plots"
     "notebooks"
 ]
 
