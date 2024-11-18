@@ -1,0 +1,26 @@
+# Core Libraries
+numpy
+pandas
+matplotlib
+seaborn
+scipy
+
+# Machine Learning and Data Mining
+scikit-learn
+
+# Deep Learning (PyTorch)
+torch
+torchvision
+pillow
+
+# Jupyter Notebooks for Analysis
+jupyter
+ipykernel
+notebook       # Ensures Jupyter Notebook functionality
+ipython        # Interactive Python shell
+
+# Progress Bar
+tqdm
+
+# Enhanced Visualization (Optional)
+plotly         # For interactive plots (Optional)
