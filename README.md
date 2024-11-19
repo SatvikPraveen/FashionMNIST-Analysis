@@ -1,7 +1,10 @@
-# **Fashion MNIST Analysis with Fine-Tuned Models**
+# # 🎨 **Fashion MNIST Analysis** 🧥👕👗👟
 
-![Project Banner](https://via.placeholder.com/1200x400?text=Fashion+MNIST+Analysis)
+> An in-depth exploration of fashion item classification using the Fashion MNIST dataset. 
 
+Welcome to the **Fashion MNIST Analysis** project, where we dive deep into data exploration, model training, and fine-tuning to classify fashion items with **state-of-the-art techniques**.
+
+---
 ## **Overview**
 This project focuses on analyzing the **Fashion MNIST** dataset using various Convolutional Neural Networks (CNNs), including **MiniCNN**, **TinyVGG**, and **ResNet**. The models were fine-tuned to optimize performance, with evaluation metrics and visualizations providing insights into their efficacy. The fine-tuning process resulted in a **fine-tuned ResNet model** that outperformed the baseline in all key metrics.
 
@@ -77,22 +80,24 @@ FashionMNIST-Analysis/
 
 ---
 
-## **Dataset**
-- **Fashion MNIST** is a dataset of Zalando’s article images, consisting of **60,000 training** and **10,000 testing** grayscale images in **10 classes**.
-- Each image is 28x28 pixels.
+## Dataset
 
-| **Class Labels** |
-|-------------------|
-| T-shirt/top       |
-| Trouser           |
-| Pullover          |
-| Dress             |
-| Coat              |
-| Sandal            |
-| Shirt             |
-| Sneaker           |
-| Bag               |
-| Ankle Boot        |
+- **Fashion MNIST** is a dataset of Zalando’s article images, consisting of **60,000 training** and **10,000 testing** grayscale images in **10 classes**.
+- Each image is **28x28 pixels**.
+
+
+![EDA Visualization](https://github.com/SatvikPraveen/FashionMNIST-Analysis/blob/main/figures/EDA_plots/sample_images_grid.png) 
+
+
+## Class Labels
+Below are the 10 class labels for the Fashion MNIST dataset:
+
+|Col 1|Col 2|Col 3|
+|---------------|---------------|---------------|
+| T-shirt/top   | Trouser       | Pullover      |
+| Dress         | Coat          | Sandal        |
+| Shirt         | Sneaker       | Bag           |
+| Ankle Boot    |               |               |
 
 ---
 
@@ -131,11 +136,17 @@ FashionMNIST-Analysis/
 
 ## **Key Visualizations**
 
-### Confusion Matrix - Fine-Tuned ResNet
-![Fine-Tuned ResNet]([..](https://github.com/SatvikPraveen/FashionMNIST-Analysis/blob/main/figures/evaluation_plots/Best_ResNet_confusion_matrix.png)
-
 ### Confusion Matrix - Baseline ResNet
-![Baseline ResNet]([../](https://github.com/SatvikPraveen/FashionMNIST-Analysis/blob/main/figures/evaluation_plots/Baseline_ResNet_confusion_matrix.png)
+![Baseline ResNet](https://github.com/SatvikPraveen/FashionMNIST-Analysis/blob/main/figures/evaluation_plots/Baseline_ResNet_confusion_matrix.png)
+
+### Confusion Matrix - Fine-Tuned ResNet
+![Fine-Tuned ResNet](https://github.com/SatvikPraveen/FashionMNIST-Analysis/blob/main/figures/evaluation_plots/Best_ResNet_confusion_matrix.png)
+
+
+### Prediction Visualization
+Below are sample predictions made by the fine-tuned ResNet model, showcasing the model's accuracy in identifying fashion items:
+
+![Prediction Visualization](https://github.com/SatvikPraveen/FashionMNIST-Analysis/blob/main/figures/evaluation_plots/prediction_visualization.png)
 
 ---
 
