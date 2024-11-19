@@ -15,8 +15,10 @@ folders = [
     "figures/EDA_plots",
     "figures/modeling_plots",
     "figures/fine_tuning_plots",
-    "figures/evaluation_plots"
-    "notebooks"
+    "figures/evaluation_plots",
+    "notebooks",
+    "results",
+    "results/fine_tuning_results"
 ]
 
 files = [
