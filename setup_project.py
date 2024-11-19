@@ -8,14 +8,17 @@ folders = [
     "models/all_models",
     "models/best_model",
     "models/best_model_weights",
+    "src",
     "tests",
     "eda",
     "figures",
     "figures/EDA_plots",
     "figures/modeling_plots",
     "figures/fine_tuning_plots",
-    "figures/evaluation_plots"
-    "notebooks"
+    "figures/evaluation_plots",
+    "notebooks",
+    "results",
+    "results/fine_tuning_results"
 ]
 
 files = [
