@@ -31,10 +31,8 @@ FashionMNIST-Analysis/
 │   ├── EDA_plots/
 │   ├── evaluation_plots/
 │   ├── modeling_plots/
-│   ├── fine_tuning_plots/
 ├── models/
 │   ├── all_models/
-│   ├── best_model/
 │   ├── best_model_weights/
 ├── notebooks/
 │   ├── eda.ipynb
@@ -168,10 +166,14 @@ Below are sample predictions made by the fine-tuned ResNet model, showcasing the
    ```bash
    git clone https://github.com/SatvikPraveen/FashionMNIST-Analysis.git
    cd FashionMNIST-Analysis
-2. Install dependencies
+2. Create an environment
+   ```bash
+   python -m venv envf
+   source envf/bin/activate 
+4. Install dependencies
    ```bash
    pip install -r requirements.txt
-3. Run the setup script
+5. Run the setup script
    ```bash
    python setup_project.py
 
