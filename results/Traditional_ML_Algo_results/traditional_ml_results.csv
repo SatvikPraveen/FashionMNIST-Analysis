@@ -1,0 +1,4 @@
+Model,Accuracy (PCA),"Accuracy (PCA, Tuned)",Accuracy (t-SNE),"Accuracy (t-SNE, Tuned)",Accuracy (UMAP),"Accuracy (UMAP, Tuned)"
+Random Forest,0.8191,0.8482,0.5434,0.5287,0.7703,0.776
+kNN,0.8564,0.859,0.5121,0.5142,0.7605,0.7672
+XGBoost,0.8547,0.8547,0.5507,0.5507,0.7731,0.7731
