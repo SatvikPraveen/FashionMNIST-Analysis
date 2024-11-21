@@ -12,6 +12,7 @@ This project focuses on analyzing the **Fashion MNIST** dataset using various Co
 
 ## **Key Features**
 
+- **Traditional Machine Learning Models**: Classification using **Random Forest**, **k-Nearest Neighbors**, and **XGBoost**, combined with dimensionality reduction techniques like PCA, t-SNE, and UMAP.
 - **Custom Baseline Models**: Implementation of lightweight **MiniCNN**, **TinyVGG**, and **ResNet** architectures.
 - **Fine-Tuning Pipeline**: A robust pipeline to tune hyperparameters such as learning rates, batch sizes, and early stopping patience values.
 - **Visualization Tools**: 
@@ -27,18 +28,24 @@ This project focuses on analyzing the **Fashion MNIST** dataset using various Co
 FashionMNIST-Analysis/
 ├── data/
 ├── data_preparation/
+├── eda/
+│   ├── EDA.ipynb
 ├── figures/
 │   ├── EDA_plots/
 │   ├── evaluation_plots/
 │   ├── modeling_plots/
+│   ├── Traditional_ML_Algo_plots/ 
 ├── models/
 │   ├── all_models/
 │   ├── best_model_weights/
 ├── notebooks/
-│   ├── eda.ipynb
 │   ├── modeling.ipynb
 │   ├── finetuning.ipynb
 │   ├── evaluation.ipynb
+│   ├── Traditional_ML_Algo.ipynb
+├── results/
+│   ├── fine_tuning_results/
+│   ├── Traditional_ML_Algo_results/
 ├── src/
 │   ├── model_definitions.py
 │   ├── utils.py
@@ -53,6 +60,8 @@ FashionMNIST-Analysis/
 
 - **`data/`**: Directory for storing raw data.
 - **`data_preparation/`**: Processed CSV files for training, validation, and testing datasets.
+- **`eda/`**: Designated folder for EDA
+  - **`EDA.ipynb`**: For exploratory data analysis.
 - **`figures/`**: 
   - **`EDA_plots/`**: Visualizations from Exploratory Data Analysis.
   - **`evaluation_plots/`**: Visualizations and metrics for model evaluation.
@@ -63,7 +72,6 @@ FashionMNIST-Analysis/
   - **`best_model/`**: Contains the final best model after evaluation.
   - **`best_model_weights/`**: Weights of the best-performing model.
 - **`notebooks/`**: Jupyter notebooks for the entire workflow:
-  - **`eda.ipynb`**: For exploratory data analysis.
   - **`modeling.ipynb`**: For training baseline models.
   - **`finetuning.ipynb`**: For fine-tuning models with hyperparameter optimization.
   - **`evaluation.ipynb`**: For evaluation and comparison of models.
@@ -106,7 +114,21 @@ Below are the 10 class labels for the Fashion MNIST dataset:
 - Sample image visualizations.
 - Data normalization and preprocessing.
 
-### **2. Baseline Modeling**
+### **2. Traditional Machine Learning**
+- Models Used:
+  - **Random Forest**
+  - **k-Nearest Neighbors**
+  - **XGBoost**
+- Dimensionality Reduction Techniques:
+  - **PCA**: Principal Component Analysis for feature reduction.
+  - **t-SNE**: Non-linear dimensionality reduction for visualization.
+  - **UMAP**: Uniform Manifold Approximation and Projection for clustering and analysis.
+- Hyperparameter Tuning:
+  - Grid search optimization for all models.
+- **Evaluation Metrics**:
+  - Confusion matrices, accuracy, and classification reports for each model.
+
+### **3. CNN Baseline Modeling**
 - Architectures implemented:
   - **MiniCNN**: A lightweight custom CNN.
   - **TinyVGG**: Inspired by VGG architecture, with fewer layers.
@@ -114,7 +136,7 @@ Below are the 10 class labels for the Fashion MNIST dataset:
 - **Evaluation Metrics**:
   - Accuracy, Precision, Recall, F1-score for all models.
 
-### **3. Fine-Tuning**
+### **4. Fine-Tuning**
 - **Hyperparameter Grid**:
   - Learning Rates: `[1e-5, 5e-6]`
   - Batch Sizes: `[32, 64]`
@@ -122,7 +144,7 @@ Below are the 10 class labels for the Fashion MNIST dataset:
 - **Best Model Selection**:
   - Fine-tuned ResNet achieved the highest validation accuracy (**93.23%**).
 
-### **4. Evaluation**
+### **5. Evaluation**
 - Confusion matrices for **baseline ResNet** and **fine-tuned ResNet** models.
 - **Evaluation Metrics**:
   - Baseline ResNet F1-score: **90.95%**
@@ -180,6 +202,7 @@ Below are sample predictions made by the fine-tuned ResNet model, showcasing the
 ## **Execution**
 
 - **Exploratory Data Analysis**: `eda.ipynb`
+- **Traditional ML Algorithms**:`Traditional_ML_Algo.ipynb`
 - **Model Training**: `modeling.ipynb`
 - **Fine-Tuning**: `finetuning.ipynb`
 - **Evaluation**: `evaluation.ipynb`
@@ -205,6 +228,7 @@ This project is inspired by the Fashion MNIST dataset provided by Zalando Resear
 
 - Explore transfer learning with pretrained models like **ResNet50** or **EfficientNet**.
 - Implement model ensembling for improved predictions.
+- Extend dimensionality reduction techniques like **t-SNE** and **UMAP** to more components and integrate them into end-to-end pipelines.
 - Test the best model on unseen real-world data.
 
 ---
