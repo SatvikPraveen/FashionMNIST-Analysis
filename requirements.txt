@@ -27,3 +27,7 @@ plotly         # For interactive plots (Optional)
 
 # Generating summary of the models
 torchinfo
+
+# Additional Dependencies for Dimensionality Reduction and XGBoost
+umap-learn
+xgboost
