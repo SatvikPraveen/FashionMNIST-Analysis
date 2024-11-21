@@ -14,9 +14,11 @@ folders = [
     "figures/EDA_plots",
     "figures/modeling_plots",
     "figures/evaluation_plots",
+    "figures/Traditional_ML_Algo_plots",
     "notebooks",
     "results",
-    "results/fine_tuning_results"
+    "results/fine_tuning_results",
+    "results/Traditional_ML_Algo_results"
 ]
 
 files = [
