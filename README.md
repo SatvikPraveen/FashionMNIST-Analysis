@@ -21,37 +21,41 @@ This project focuses on analyzing the **Fashion MNIST** dataset using various Co
 - **Metrics Comparison**: Detailed comparison of baseline vs. fine-tuned models using accuracy, precision, recall, and F1-score.
 - **Reproducibility**: Scripts are modular and adaptable for other datasets.
 
+
 ---
 
 ## **Project Structure**
 ```bash
 FashionMNIST-Analysis/
-├── data/
-├── data_preparation/
+├── data/  # Contains raw data files and datasets for the project.
+├── data_preparation/  # Stores preprocessed datasets (e.g., train, validation, and test splits in CSV format).
 ├── eda/
-│   ├── EDA.ipynb
-├── figures/
-│   ├── EDA_plots/
-│   ├── evaluation_plots/
-│   ├── modeling_plots/
-│   ├── Traditional_ML_Algo_plots/ 
-├── models/
-│   ├── all_models/
-│   ├── best_model_weights/
-├── notebooks/
-│   ├── modeling.ipynb
-│   ├── finetuning.ipynb
-│   ├── evaluation.ipynb
-│   ├── Traditional_ML_Algo.ipynb
-├── results/
-│   ├── fine_tuning_results/
-│   ├── Traditional_ML_Algo_results/
-├── src/
-│   ├── model_definitions.py
-│   ├── utils.py
-├── README.md
-├── requirements.txt
-├── setup_project.py
+│   ├── EDA.ipynb  # Notebook for exploratory data analysis, including visualizations and insights into the dataset.
+├── figures/  # Contains subfolders for plots generated during various stages of the project:
+│   ├── EDA_plots/  # EDA visualizations.
+│   ├── evaluation_plots/  # Model evaluation plots such as confusion matrices and accuracy plots.
+│   ├── modeling_plots/  # Figures generated during model training.
+│   ├── Traditional_ML_Algo_plots/  # Plots related to Traditional Machine Learning algorithms.
+├── models/  # Stores model weights and architecture:
+│   ├── all_models/  # Saved weights for all trained models.
+│   ├── best_model_weights/  # Weights for the best-performing model.
+├── notebooks/  # Jupyter notebooks for different parts of the workflow:
+│   ├── modeling.ipynb  # For training baseline models.
+│   ├── finetuning.ipynb  # For fine-tuning models with hyperparameter optimization.
+│   ├── evaluation.ipynb  # For evaluation and comparison of models.
+│   ├── Traditional_ML_Algo.ipynb  # For implementing and evaluating traditional machine learning algorithms.
+├── results/  # Stores results from training and evaluation processes:
+│   ├── fine_tuning_results/  # Results from hyperparameter tuning of CNN models.
+│   ├── Traditional_ML_Algo_results/  # Results from traditional ML models.
+├── src/  # Source files containing reusable scripts:
+│   ├── model_definitions.py  # Model architectures for CNNs and others.
+│   ├── utils.py  # Helper functions for training, evaluation, and visualization.
+│   ├── evaluation.py  # Module for evaluation tasks: metrics (precision, recall, F1-score, accuracy), confusion matrices, and visualizations.
+├── tests/  # Contains test outputs, including predictions, confusion matrices, and evaluation metrics for verification.
+├── README.md  # Comprehensive project documentation, including setup, structure, and instructions.
+├── requirements.txt  # Lists all dependencies required to run the project.
+├── setup_project.py  # Script for setting up the directory structure and initializing the project environment.
+├── main.py  # Main script to evaluate the best-trained model, generate predictions, and produce evaluation metrics.
 ```
 
 ---
@@ -78,9 +82,11 @@ FashionMNIST-Analysis/
 - **`src/`**:
   - **`model_definitions.py`**: Contains all model architecture definitions.
   - **`utils.py`**: Utility functions for training, testing, and evaluation.
+  - **`evaluation.py`**: Handles model evaluation, including metrics calculation and prediction visualization.
 - **`README.md`**: Project documentation and execution details.
 - **`requirements.txt`**: Required libraries and dependencies for the project.
 - **`setup_project.py`**: Script for creating the project directory structure.
+- **`main.py`**: Evaluates the best-trained model, generating predictions, metrics, and visualizations.
 
 
 
@@ -98,12 +104,18 @@ FashionMNIST-Analysis/
 ## Class Labels
 Below are the 10 class labels for the Fashion MNIST dataset:
 
-|Col 1|Col 2|Col 3|
-|---------------|---------------|---------------|
-| T-shirt/top   | Trouser       | Pullover      |
-| Dress         | Coat          | Sandal        |
-| Shirt         | Sneaker       | Bag           |
-| Ankle Boot    |               |               |
+| **Class Label** | **Examples** |
+|-----------------|--------------|
+| T-shirt/top     | 👕           |
+| Trouser         | 👖           |
+| Pullover        | 🧥           |
+| Dress           | 👗           |
+| Coat            | 🧥           |
+| Sandal          | 🩴           |
+| Shirt           | 👔           |
+| Sneaker         | 👟           |
+| Bag             | 👜           |
+| Ankle Boot      | 🥾           |
 
 ---
 
@@ -183,21 +195,43 @@ Below are sample predictions made by the fine-tuned ResNet model, showcasing the
 
 ## **How to Run**
 
-### **Environment Setup**
-1. Clone this repository:
+### Environment Setup
+
+Follow these steps to set up the project on your local machine:
+
+1. **Clone this repository**:  
+   Clone the FashionMNIST-Analysis repository to your local machine.
    ```bash
    git clone https://github.com/SatvikPraveen/FashionMNIST-Analysis.git
    cd FashionMNIST-Analysis
-2. Create an environment
-   ```bash
-   python -m venv envf
-   source envf/bin/activate 
-4. Install dependencies
+2. **Create an environment**:  
+   Set up a virtual Python environment to manage dependencies.
+
+   - For Linux/MacOS:
+     ```bash
+     python -m venv envf
+     source envf/bin/activate
+     ```
+
+   - For Windows:
+     ```bash
+     python -m venv envf
+     envf\Scripts\activate
+     ```
+3. **Install dependencies:**
+
+   Install all required Python libraries listed in `requirements.txt`.
+
    ```bash
    pip install -r requirements.txt
-5. Run the setup script
+   ```
+4. **Run the setup script:**
+
+   Initializes the project by creating necessary directories
+
    ```bash
    python setup_project.py
+   ```
 
 ## **Execution**
 
@@ -209,12 +243,60 @@ Below are sample predictions made by the fine-tuned ResNet model, showcasing the
 
 ---
 
+## **Evaluating the Model**
+
+### **Using the `main.py` Script**
+The `main.py` script enables the evaluation of the best-trained model with the following capabilities:
+
+- **Load Pre-trained Weights**: The script loads pre-trained weights for the best-performing model.
+- **Output Predictions and Metrics**: The following outputs are generated during model evaluation and are saved in the `tests/` folder:
+
+  - **Predictions Vector**:  
+    - Saved as a CSV file (`predictions_vector.csv`) containing the true and predicted labels.
+  
+  - **Evaluation Metrics**:  
+    - Metrics such as accuracy, precision, recall, and F1-score are saved as a CSV file (`evaluation_metrics.csv`).
+  
+  - **Visualizations**:  
+    - Includes:
+      - Confusion matrix (`confusion_matrix.png`).
+      - Sample prediction visualizations (`prediction_visualization.png`). 
+
+  These outputs are helpful for analyzing the model's performance and understanding its predictions visually.
+
+
+#### **Command to Run**
+```bash
+python main.py --model_path models/best_model_weights/best_model_weights.pth --test_csv data_preparation/test_data.csv --test_dir tests
+```
+
+- **`--model_path`**: Path to the saved model weights.
+- **`--test_csv`**: Path to the test dataset in CSV format.
+- **`--test_dir`**: Directory to save all outputs.
+
+---
 ## **Technologies Used**
 
-- **Frameworks**: PyTorch, Scikit-learn
-- **Visualization**: Matplotlib, Seaborn
-- **Tools**: Jupyter Notebook, NumPy, Pandas
-- **Dataset**: Fashion MNIST from Zalando
+- **Core Libraries**: NumPy, Pandas, Matplotlib, Seaborn, SciPy  
+  - Essential libraries for data manipulation, statistical analysis, and visualization.  
+
+- **Machine Learning and Data Mining**: Scikit-learn  
+  - Provides tools for traditional ML models and techniques like PCA and t-SNE.  
+
+- **Deep Learning (PyTorch)**: PyTorch, TorchVision, Pillow  
+  - PyTorch and TorchVision are used for designing, training, and evaluating neural networks. Pillow is used for image preprocessing.  
+
+- **Jupyter Notebooks for Analysis**: Jupyter, IPython, IPyKernel, Notebook  
+  - Enables interactive analysis and visualization in Jupyter Notebook environments.  
+
+- **Progress Bar**: TQDM  
+  - Adds progress bars to loops and processes for better tracking.  
+
+- **Generating Model Summaries**: TorchInfo  
+  - Generates detailed summaries of PyTorch models, including layer-wise parameters and memory usage.  
+
+- **Dimensionality Reduction and XGBoost**: UMAP-learn, XGBoost  
+  - UMAP for advanced dimensionality reduction and XGBoost for traditional gradient-boosted models.  
 
 ---
 
@@ -224,9 +306,22 @@ This project is inspired by the Fashion MNIST dataset provided by Zalando Resear
 
 ---
 
+## Example Notebooks
+
+To explore the different stages of the project workflow, you can access the following Jupyter notebooks:
+
+- **[Data Preparation](https://github.com/SatvikPraveen/FashionMNIST-Analysis/blob/main/notebooks/DataPreparation.ipynb)**: Prepares the dataset for performing tasks
+- **[Exploratory Data Analysis (EDA)](https://github.com/SatvikPraveen/FashionMNIST-Analysis/blob/main/eda/EDA.ipynb)**: Visualizations and preprocessing steps for Fashion MNIST.
+- **[Traditional Machine Learning](https://github.com/SatvikPraveen/FashionMNIST-Analysis/blob/main/notebooks/Traditional_ML_Algo.ipynb)**: Implementation of Random Forest, k-NN, and XGBoost models with dimensionality reduction techniques.
+- **[Model Training](https://github.com/SatvikPraveen/FashionMNIST-Analysis/blob/main/notebooks/modeling.ipynb)**: Training baseline CNN models like MiniCNN, TinyVGG, and ResNet.
+- **[Fine-Tuning](https://github.com/SatvikPraveen/FashionMNIST-Analysis/blob/main/notebooks/finetuning.ipynb)**: Hyperparameter tuning for the CNN models.
+- **[Evaluation](https://github.com/SatvikPraveen/FashionMNIST-Analysis/blob/main/notebooks/evaluate_best_model.ipynb)**: Model evaluation, confusion matrices, and metrics comparison.
+
+You can access the full repository [here](https://github.com/SatvikPraveen/FashionMNIST-Analysis).
+
 ## **Future Work**
 
-- Explore transfer learning with pretrained models like **ResNet50** or **EfficientNet**.
+- Explore transfer learning with pretrained models like **ResNet50**, **EfficientNet**, or Vision Transformers (ViTs).
 - Implement model ensembling for improved predictions.
 - Extend dimensionality reduction techniques like **t-SNE** and **UMAP** to more components and integrate them into end-to-end pipelines.
 - Test the best model on unseen real-world data.
