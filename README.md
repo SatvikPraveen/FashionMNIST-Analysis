@@ -324,6 +324,8 @@ python main.py --model_path models/best_model_weights/best_model_weights.pth --t
 
 This project is inspired by the Fashion MNIST dataset provided by Zalando Research. Special thanks to open-source contributors of **PyTorch** and **Scikit-learn** for enabling this work.
 
+For a detailed explanation of this project, refer to the accompanying [blog post](https://medium.com/@meetdheerajreddy/fashion-mnist-analysis-classifying-fashion-with-deep-learning-0ba793ba5234).
+
 ---
 
 ## Implementation Notebooks
