@@ -326,7 +326,7 @@ This project is inspired by the Fashion MNIST dataset provided by Zalando Resear
 
 ---
 
-## Example Notebooks
+## Implementation Notebooks
 
 To explore the different stages of the project workflow, you can access the following Jupyter notebooks:
 
