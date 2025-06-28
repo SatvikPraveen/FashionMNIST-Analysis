@@ -1,7 +1,3 @@
-Here’s a concise and well-structured `CONTRIBUTING.md` for your **Optimal-Demo-Selection-ICL** project, modeled after your Task Manager PRO template:
-
----
-
 # 🤝 Contributing Guidelines for Optimal-Demo-Selection-ICL
 
 Thank you for considering contributing to **Optimal-Demo-Selection-ICL**!
