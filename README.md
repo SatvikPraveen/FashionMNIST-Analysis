@@ -1,5 +1,11 @@
 # # 🎨 **Fashion MNIST Analysis** 🧥👕👗👟
 
+![MIT License](https://img.shields.io/github/license/SatvikPraveen/FashionMNIST-Analysis)
+![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue)
+![Repo Size](https://img.shields.io/github/repo-size/SatvikPraveen/FashionMNIST-Analysis)
+![Issues](https://img.shields.io/github/issues/SatvikPraveen/FashionMNIST-Analysis)
+![Stars](https://img.shields.io/github/stars/SatvikPraveen/FashionMNIST-Analysis?style=social)
+
 > An in-depth exploration of fashion item classification using the Fashion MNIST dataset.
 
 Welcome to the **Fashion MNIST Analysis** project, where we dive deep into data exploration, model training, and fine-tuning to classify fashion items with **state-of-the-art techniques**.
