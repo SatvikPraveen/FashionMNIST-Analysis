@@ -1,3 +1,4 @@
+````markdown
 # Deployment Guide for FashionMNIST-Analysis
 
 This guide provides instructions for deploying the FashionMNIST-Analysis project using Docker and other deployment options.
@@ -494,3 +495,4 @@ docker system prune -a
 ---
 
 For issues or questions, please refer to the main [README.md](../README.md) or create an issue in the repository.
+````

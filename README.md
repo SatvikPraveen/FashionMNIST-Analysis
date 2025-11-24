@@ -347,6 +347,18 @@ To explore the different stages of the project workflow, you can access the foll
 
 You can access the full repository [here](https://github.com/SatvikPraveen/FashionMNIST-Analysis).
 
+## **Documentation**
+
+For comprehensive guides and documentation, please refer to the `docs/` folder:
+
+- **[FEATURES.md](docs/FEATURES.md)** - Complete feature documentation (800+ lines) covering all new modules and capabilities.
+- **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Deployment guide for Docker, Kubernetes, and cloud platforms.
+- **[IMPLEMENTATION_SUMMARY.md](docs/IMPLEMENTATION_SUMMARY.md)** - Detailed implementation report of the modernization project.
+- **[CONTRIBUTING.md](docs/CONTRIBUTING.md)** - Guidelines for contributing to the project.
+- **[CODE_OF_CONDUCT.md](docs/CODE_OF_CONDUCT.md)** - Community code of conduct.
+
+---
+
 ## **Future Work**
 
 - Explore transfer learning with pretrained models like **ResNet50**, **EfficientNet**, or **Vision Transformers (ViTs)**.
