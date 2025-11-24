@@ -1,0 +1,106 @@
+version: "3.8"
+
+services:
+  # FastAPI Backend Service
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: fashionmnist-api
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./logs:/app/logs
+      - ./config.yaml:/app/config.yaml
+    command: uvicorn src.api_server:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - fashionmnist-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  # Streamlit Dashboard Service
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: fashionmnist-dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./logs:/app/logs
+      - ./config.yaml:/app/config.yaml
+    command: streamlit run apps/streamlit_dashboard.py --server.port=8501 --server.address=0.0.0.0
+    networks:
+      - fashionmnist-network
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  # Gradio App Service
+  gradio:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: fashionmnist-gradio
+    ports:
+      - "7860:7860"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./logs:/app/logs
+      - ./config.yaml:/app/config.yaml
+    command: python apps/gradio_app.py
+    networks:
+      - fashionmnist-network
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  # Optional: Jupyter Lab for development
+  jupyter:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: fashionmnist-jupyter
+    ports:
+      - "8888:8888"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - JUPYTER_ENABLE_LAB=yes
+    volumes:
+      - ./:/app
+    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=''
+    networks:
+      - fashionmnist-network
+    restart: unless-stopped
+
+networks:
+  fashionmnist-network:
+    driver: bridge
+
+volumes:
+  fashionmnist-data:
+  fashionmnist-models:
+  fashionmnist-logs:
