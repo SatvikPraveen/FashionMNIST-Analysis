@@ -1,3 +1,4 @@
+````markdown
 # FashionMNIST-Analysis: Complete Feature Guide
 
 This document provides comprehensive information about all the new features and enhancements added to the FashionMNIST-Analysis project.
@@ -638,7 +639,7 @@ docker run --gpus all \
   fashionmnist:latest
 ```
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for comprehensive deployment guide.
+See [DEPLOYMENT.md](../docs/DEPLOYMENT.md) for comprehensive deployment guide.
 
 ---
 
@@ -818,8 +819,9 @@ model = TransferLearningModel("vit_base_patch16_224")  # Use faster model
 
 For more information, see:
 
-- [README.md](README.md) - Project overview
+- [README.md](../README.md) - Project overview
 - [DEPLOYMENT.md](DEPLOYMENT.md) - Deployment guide
-- [config.yaml](config.yaml) - Configuration reference
+- [config.yaml](../config.yaml) - Configuration reference
 
 Happy classifying! 👕👗🧥👠
+````
