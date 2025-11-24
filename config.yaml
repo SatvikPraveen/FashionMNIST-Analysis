@@ -1,0 +1,98 @@
+# FashionMNIST-Analysis Configuration File
+
+# Model Configuration
+model:
+  architecture: "resnet" # Options: resnet, vit, efficientnet, minicnn, tinyvgg
+  num_classes: 10
+  pretrained: true
+  device: "auto" # auto, cuda, cpu, mps
+
+# Transfer Learning Configuration
+transfer_learning:
+  freeze_backbone: false # Freeze pretrained weights during training
+  num_frozen_layers: 0
+  learning_rate: 1e-4
+
+# Training Configuration
+training:
+  epochs: 50
+  batch_size: 32
+  learning_rate: 1e-3
+  weight_decay: 1e-4
+  optimizer: "adam" # adam, sgd
+  scheduler: "cosine" # cosine, step, exponential, none
+  early_stopping_patience: 5
+
+# Data Configuration
+data:
+  dataset: "fashion_mnist"
+  train_split: 0.8
+  val_split: 0.1
+  test_split: 0.1
+  normalize: true
+  image_size: 224 # For transfer learning models
+  grayscale_to_rgb: true # Convert 1-channel to 3-channel for pretrained models
+
+# Data Augmentation Configuration
+augmentation:
+  enabled: true
+  strategy: "advanced" # basic, advanced, custom
+  rotation: 15
+  zoom: 0.2
+  horizontal_flip: true
+  vertical_flip: false
+  cutmix: true
+  cutmix_alpha: 1.0
+  mixup: true
+  mixup_alpha: 0.2
+
+# Ensemble Configuration
+ensemble:
+  enabled: false
+  method: "voting" # voting, stacking, bagging
+  models: ["resnet", "vit", "efficientnet"]
+  voting_strategy: "hard" # hard, soft
+
+# Explainability Configuration
+explainability:
+  grad_cam_enabled: true
+  shap_enabled: false # Can be slow
+  attention_maps_enabled: true
+  layer_for_gradcam: "layer4" # For ResNet
+
+# Monitoring Configuration
+monitoring:
+  mlflow_tracking: false
+  wandb_enabled: false
+  log_metrics: true
+  log_predictions: true
+  drift_detection: false
+
+# API Configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  reload: true
+  workers: 1
+  max_model_size: 500 # MB
+
+# Real-world Inference Configuration
+inference:
+  input_size: 224
+  confidence_threshold: 0.5
+  return_top_k: 3
+  grayscale_to_rgb: true
+
+# Paths Configuration
+paths:
+  data_dir: "./data"
+  models_dir: "./models"
+  results_dir: "./results"
+  logs_dir: "./logs"
+  plots_dir: "./figures"
+
+# Logging Configuration
+logging:
+  level: "INFO" # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "./logs/app.log"
