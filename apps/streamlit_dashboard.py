@@ -15,12 +15,12 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.config import load_config
-from src.model_definitions import ResNet, BasicBlock, MiniCNN, TinyVGG
-from src.transfer_learning import TransferLearningModel
-from src.real_world_inference import ImagePreprocessor, RealWorldInference
-from src.ensemble import EnsembleVoting
-from src.explainability import GradCAM
+from src.config.settings import load_config
+from src.models.architectures import ResNet, BasicBlock, MiniCNN, TinyVGG
+from src.models.transfer import TransferLearningModel
+from src.serving.inference import ImagePreprocessor, RealWorldInference
+from src.models.ensemble import EnsembleVoting
+from src.evaluation.explainability import GradCAM
 import matplotlib.pyplot as plt
 
 
