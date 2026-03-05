@@ -1,55 +1,63 @@
+"""
+Project scaffolding script for FashionMNIST-Analysis.
+
+Run this once after cloning the repository to create any missing
+directories that are excluded from version control (e.g. data/, logs/).
+
+The script is idempotent: existing folders are silently skipped.
+
+Usage:
+    python setup_project.py
+"""
+
 import os
 
-# Define the project structure
+# ---------------------------------------------------------------------------
+# Directory structure
+# Note: src/ subpackages and notebooks/ are tracked in git and not listed
+# here. Only runtime directories that are gitignored need to be created.
+# ---------------------------------------------------------------------------
 folders = [
-    "data",
-    "data_preparation",
-    "models",
+    "data/raw",
+    "data/processed",
     "models/all_models",
     "models/best_model_weights",
-    "src",
+    "logs",
+    "checkpoints",
     "tests",
     "eda",
-    "figures",
     "figures/EDA_plots",
     "figures/modeling_plots",
     "figures/evaluation_plots",
     "figures/Traditional_ML_Algo_plots",
     "notebooks",
-    "results",
     "results/fine_tuning_results",
-    "results/Traditional_ML_Algo_results"
+    "results/Traditional_ML_Algo_results",
 ]
 
 files = [
     "README.md",
     "requirements.txt",
-    ".gitignore"
+    ".gitignore",
 ]
 
-# Updated .gitignore content
-gitignore_content = """
-# Python cache and compiled files
+# Minimal .gitignore added only when the file does not yet exist
+gitignore_content = """\
+# Python cache
 __pycache__/
 *.pyc
 
-# Virtual environment folder (updated to match your environment name)
+# Virtual environments
+venv/
+env/
 envf/
 
-# Jupyter Notebook checkpoints
+# Jupyter checkpoints
 .ipynb_checkpoints/
 
-# Log files and environment configuration
+# Logs and secrets
 *.log
 *.env
-
-# Ignore specific temporary or backup files
-*.bak
-*.swp
-
-# Uncomment these lines if you want to ignore figures and processed CSV files
-# figures/
-# data_preparation/
 """
 
 # Function to create directories
