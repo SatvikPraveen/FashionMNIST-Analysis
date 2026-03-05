@@ -229,6 +229,41 @@ class RandomErasing:
         return x
 
 
+class GaussianNoise:
+    """
+    Additive Gaussian noise augmentation.
+
+    Adds zero-mean Gaussian noise to a tensor image, simulating sensor noise
+    and improving robustness to small perturbations.
+    """
+
+    def __init__(self, std: float = 0.05, probability: float = 0.5):
+        """
+        Initialize Gaussian Noise.
+
+        Args:
+            std (float): Standard deviation of the noise (relative to [0,1] pixel range)
+            probability (float): Probability of applying noise
+        """
+        self.std = std
+        self.probability = probability
+
+    def __call__(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Apply Gaussian noise.
+
+        Args:
+            x (torch.Tensor): Input tensor (C, H, W) or (B, C, H, W)
+
+        Returns:
+            Noisy tensor clipped to [0, 1]
+        """
+        if np.random.rand() > self.probability:
+            return x
+        noise = torch.randn_like(x) * self.std
+        return torch.clamp(x + noise, 0.0, 1.0)
+
+
 class GaussianBlur:
     """
     Gaussian blur augmentation using torch.nn.functional.
@@ -478,6 +513,11 @@ class AugmentationPipeline:
             self.gaussian_blur = GaussianBlur(**augmentations['gaussian_blur'])
             self.augmentations.append(self.gaussian_blur)
             logger.info("Gaussian Blur augmentation enabled")
+
+        if 'gaussian_noise' in augmentations:
+            self.gaussian_noise = GaussianNoise(**augmentations['gaussian_noise'])
+            self.augmentations.append(self.gaussian_noise)
+            logger.info("Gaussian Noise augmentation enabled")
         
         # Torchvision transforms
         if 'torchvision' in augmentations:

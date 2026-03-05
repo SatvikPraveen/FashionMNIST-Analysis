@@ -37,10 +37,28 @@ data:
 augmentation:
   enabled: true
   strategy: "advanced" # basic, advanced, custom
-  rotation: 15
-  zoom: 0.2
-  horizontal_flip: true
-  vertical_flip: false
+
+  # Geometric
+  rotation: 15              # RandomRotation degrees (±)
+  horizontal_flip: true     # RandomHorizontalFlip
+  vertical_flip: false      # RandomVerticalFlip (not useful for clothing)
+  random_crop: true         # RandomCrop with padding
+  random_crop_padding: 4    # Pixels of zero-padding before crop (28+4 → crop back to 28)
+  random_affine: true       # Slight translate + scale
+  zoom: 0.2                 # Scale range for random_affine (kept for back-compat)
+
+  # Color / intensity (grayscale-safe: saturation & hue kept at 0)
+  color_jitter: true
+  brightness: 0.3           # ±30% brightness variation
+  contrast: 0.3             # ±30% contrast variation
+
+  # Noise & occlusion
+  random_erasing: true      # Hide random rectangular patches
+  random_erasing_prob: 0.3  # Probability of erasing per image
+  gaussian_noise: true      # Additive Gaussian noise
+  gaussian_noise_std: 0.04  # Noise std (pixel values in [0,1])
+
+  # Batch-level mixing
   cutmix: true
   cutmix_alpha: 1.0
   mixup: true
