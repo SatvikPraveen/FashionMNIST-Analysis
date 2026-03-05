@@ -14,7 +14,7 @@ Welcome to the **Fashion MNIST Analysis** project, where we dive deep into data 
 
 ## **Overview**
 
-This project focuses on analyzing the **Fashion MNIST** dataset using various Convolutional Neural Networks (CNNs), including **MiniCNN**, **TinyVGG**, and **ResNet**. The models were fine-tuned to optimize performance, with evaluation metrics and visualizations providing insights into their efficacy. The fine-tuning process resulted in a **fine-tuned ResNet model** that outperformed the baseline in all key metrics.
+This project focuses on analyzing the **Fashion MNIST** dataset using various Convolutional Neural Networks (CNNs), including **MiniCNN**, **TinyVGG**, and **ResNet**. The models were trained with a production-ready pipeline featuring correct Fashion-MNIST normalization, val_acc-based early stopping, and automatic best-model selection. **TinyVGG** achieved the highest performance across all three architectures.
 
 ---
 
@@ -35,35 +35,40 @@ This project focuses on analyzing the **Fashion MNIST** dataset using various Co
 
 ```bash
 FashionMNIST-Analysis/
-├── data/  # Contains raw data files and datasets for the project.
-├── data_preparation/  # Stores preprocessed datasets (e.g., train, validation, and test splits in CSV format).
+├── data/
+│   ├── processed/          # Train/val/test CSVs (fashion_mnist_{train,val,test}.csv)
+│   └── FashionMNIST/raw/   # Raw binary files downloaded by torchvision
 ├── eda/
-│   ├── EDA.ipynb  # Notebook for exploratory data analysis, including visualizations and insights into the dataset.
-├── figures/  # Contains subfolders for plots generated during various stages of the project:
-│   ├── EDA_plots/  # EDA visualizations.
-│   ├── evaluation_plots/  # Model evaluation plots such as confusion matrices and accuracy plots.
-│   ├── modeling_plots/  # Figures generated during model training.
-│   ├── Traditional_ML_Algo_plots/  # Plots related to Traditional Machine Learning algorithms.
-├── models/  # Stores model weights and architecture:
-│   ├── all_models/  # Saved weights for all trained models.
-│   ├── best_model_weights/  # Weights for the best-performing model.
-├── notebooks/  # Jupyter notebooks for different parts of the workflow:
-│   ├── modeling.ipynb  # For training baseline models.
-│   ├── finetuning.ipynb  # For fine-tuning models with hyperparameter optimization.
-│   ├── evaluation.ipynb  # For evaluation and comparison of models.
-│   ├── Traditional_ML_Algo.ipynb  # For implementing and evaluating traditional machine learning algorithms.
-├── results/  # Stores results from training and evaluation processes:
-│   ├── fine_tuning_results/  # Results from hyperparameter tuning of CNN models.
-│   ├── Traditional_ML_Algo_results/  # Results from traditional ML models.
-├── src/  # Source files containing reusable scripts:
-│   ├── model_definitions.py  # Model architectures for CNNs and others.
-│   ├── utils.py  # Helper functions for training, evaluation, and visualization.
-│   ├── evaluation.py  # Module for evaluation tasks: metrics (precision, recall, F1-score, accuracy), confusion matrices, and visualizations.
-├── tests/  # Contains test outputs, including predictions, confusion matrices, and evaluation metrics for verification.
-├── README.md  # Comprehensive project documentation, including setup, structure, and instructions.
-├── requirements.txt  # Lists all dependencies required to run the project.
-├── setup_project.py  # Script for setting up the directory structure and initializing the project environment.
-├── main.py  # Main script to evaluate the best-trained model, generate predictions, and produce evaluation metrics.
+│   └── EDA.ipynb           # Exploratory data analysis notebook
+├── figures/
+│   ├── EDA_plots/          # EDA visualizations
+│   ├── evaluation_plots/   # Confusion matrix and prediction visualizations
+│   ├── modeling_plots/     # Plots generated during model training
+│   └── Traditional_ML_Algo_plots/  # Traditional ML confusion matrices
+├── models/
+│   ├── all_models/
+│   │   ├── minicnn/        # MiniCNN checkpoint + training history
+│   │   ├── tinyvgg/        # TinyVGG checkpoint + training history
+│   │   └── resnet/         # ResNet checkpoint + training history
+│   └── best_model_weights/ # Best overall model weights + best_model_info.json
+├── notebooks/              # Jupyter notebooks for the workflow
+├── results/
+│   ├── evaluation_results/ # predictions_vector.csv, evaluation_metrics.csv
+│   └── Traditional_ML_Algo_results/
+├── src/
+│   ├── cli/                # train.py, evaluate.py, finetune.py, prepare_data.py
+│   ├── data/               # dataset.py, augmentation.py, preparation.py
+│   ├── models/             # architectures.py, ensemble.py, transfer.py
+│   ├── training/           # trainer.py, tuner.py, utils.py
+│   ├── evaluation/         # evaluate.py, metrics.py, explainability.py
+│   └── serving/            # inference.py, api.py
+├── tests/                  # Unit tests (test_models.py, test_inference.py, test_utils.py)
+├── apps/                   # Streamlit dashboard and Gradio app
+├── docker/                 # Dockerfile and docker-compose.yml
+├── docs/                   # FEATURES.md, DEPLOYMENT.md, USAGE_GUIDE.md, etc.
+├── config.yaml             # All training/augmentation hyperparameters
+├── requirements.txt
+└── setup_project.py
 ```
 
 ---
@@ -163,32 +168,29 @@ Below are the 10 class labels for the Fashion MNIST dataset:
   - Batch Sizes: `[32, 64]`
   - Early Stopping Patience: `[2, 3]`
 - **Best Model Selection**:
-  - Fine-tuned ResNet achieved the highest validation accuracy (**93.23%**).
+  - **TinyVGG** achieved the highest test accuracy (**93.21%**) and was automatically saved to `models/best_model_weights/`.
 
 ### **5. Evaluation**
 
-- Confusion matrices for **baseline ResNet** and **fine-tuned ResNet** models.
+- Confusion matrix and prediction visualization for the best model (TinyVGG).
 - **Evaluation Metrics**:
-  - Baseline ResNet F1-score: **90.95%**
-  - Fine-tuned ResNet F1-score: **93.21%**
+  - MiniCNN test accuracy: **89.93%**
+  - ResNet test accuracy: **91.46%**
+  - **TinyVGG test accuracy: 93.21%** ✅ Best
 - **Visualization**:
-  - Sample predictions from the fine-tuned ResNet model.
+  - Sample predictions from the best TinyVGG model.
 
 ---
 
 ## **Key Visualizations**
 
-### Confusion Matrix - Baseline ResNet
+### Confusion Matrix - Best Model (TinyVGG, 93.21% test accuracy)
 
-![Baseline ResNet](https://github.com/SatvikPraveen/FashionMNIST-Analysis/blob/main/figures/evaluation_plots/Baseline_ResNet_confusion_matrix.png)
-
-### Confusion Matrix - Fine-Tuned ResNet
-
-![Fine-Tuned ResNet](https://github.com/SatvikPraveen/FashionMNIST-Analysis/blob/main/figures/evaluation_plots/Best_ResNet_confusion_matrix.png)
+![Confusion Matrix](https://github.com/SatvikPraveen/FashionMNIST-Analysis/blob/main/figures/evaluation_plots/confusion_matrix.png)
 
 ### Prediction Visualization
 
-Below are sample predictions made by the fine-tuned ResNet model, showcasing the model's accuracy in identifying fashion items:
+Sample predictions from the best TinyVGG model:
 
 ![Prediction Visualization](https://github.com/SatvikPraveen/FashionMNIST-Analysis/blob/main/figures/evaluation_plots/prediction_visualization.png)
 
@@ -196,12 +198,12 @@ Below are sample predictions made by the fine-tuned ResNet model, showcasing the
 
 ## **Results**
 
-| Metric        | Baseline ResNet | Fine-Tuned ResNet |
-| ------------- | --------------- | ----------------- |
-| **Accuracy**  | 0.9094          | 0.9323            |
-| **Precision** | 0.9116          | 0.9323            |
-| **Recall**    | 0.9094          | 0.9323            |
-| **F1-Score**  | 0.9095          | 0.9321            |
+| Metric        | MiniCNN | ResNet | **TinyVGG (Best)** |
+| ------------- | ------- | ------ | ------------------ |
+| **Accuracy**  | 0.8993  | 0.9146 | **0.9321**         |
+| **Precision** | 0.8995  | 0.9149 | **0.9323**         |
+| **Recall**    | 0.8993  | 0.9146 | **0.9321**         |
+| **F1-Score**  | 0.8992  | 0.9146 | **0.9321**         |
 
 ---
 
@@ -220,17 +222,24 @@ Below are sample predictions made by the fine-tuned ResNet model, showcasing the
 
 ```bash
 # 1. Prepare data
-python scripts/prepare_data.py
+python src/cli/prepare_data.py
 
-# 2. Train all models (MiniCNN, TinyVGG, ResNet)
-python scripts/train.py --model all
+# 2. Train all models (MiniCNN, TinyVGG, ResNet) — best model auto-saved
+python src/cli/train.py --model all \
+  --use-csv \
+  --train-csv data/processed/fashion_mnist_train.csv \
+  --val-csv   data/processed/fashion_mnist_val.csv \
+  --test-csv  data/processed/fashion_mnist_test.csv
 
-# 3. Fine-tune best model
-python scripts/finetune.py --model resnet --pretrained models/all_models/resnet/resnet_best.pth
+# 3. Evaluate best model (architecture auto-detected from best_model_info.json)
+python src/cli/evaluate.py \
+  --model_path models/best_model_weights/best_model_weights.pth \
+  --test_csv   data/processed/fashion_mnist_test.csv
 
-# 4. Evaluate
-python main.py --model_path models/all_models/resnet/resnet_best.pth \
-               --test_csv data_preparation/fashion_mnist_test.csv
+# 4. Fine-tune best model
+python src/cli/finetune.py \
+  --model tinyvgg \
+  --pretrained models/best_model_weights/best_model_weights.pth
 ```
 
 **📖 See [USAGE_GUIDE.md](USAGE_GUIDE.md) for complete instructions**
@@ -293,37 +302,29 @@ Follow these steps to set up the project on your local machine:
 
 ## **Evaluating the Model**
 
-### **Using the `main.py` Script**
+### **Using the `evaluate.py` CLI**
 
-The `main.py` script enables the evaluation of the best-trained model with the following capabilities:
+Evaluates the best model. Architecture is auto-detected from `models/best_model_weights/best_model_info.json`.
 
-- **Load Pre-trained Weights**: The script loads pre-trained weights for the best-performing model.
-- **Output Predictions and Metrics**: The following outputs are generated during model evaluation and are saved in the `tests/` folder:
-
-  - **Predictions Vector**:
-
-    - Saved as a CSV file (`predictions_vector.csv`) containing the true and predicted labels.
-
-  - **Evaluation Metrics**:
-
-    - Metrics such as accuracy, precision, recall, and F1-score are saved as a CSV file (`evaluation_metrics.csv`).
-
-  - **Visualizations**:
-    - Includes:
-      - Confusion matrix (`confusion_matrix.png`).
-      - Sample prediction visualizations (`prediction_visualization.png`).
-
-  These outputs are helpful for analyzing the model's performance and understanding its predictions visually.
+- **Plots** are saved to `figures/evaluation_plots/`:
+  - `confusion_matrix.png`
+  - `prediction_visualization.png`
+- **CSVs** are saved to `results/evaluation_results/`:
+  - `predictions_vector.csv`
+  - `evaluation_metrics.csv`
 
 #### **Command to Run**
 
 ```bash
-python main.py --model_path models/best_model_weights/best_model_weights.pth --test_csv data_preparation/test_data.csv --test_dir tests
+python src/cli/evaluate.py \
+  --model_path models/best_model_weights/best_model_weights.pth \
+  --test_csv   data/processed/fashion_mnist_test.csv
 ```
 
-- **`--model_path`**: Path to the saved model weights.
-- **`--test_csv`**: Path to the test dataset in CSV format.
-- **`--test_dir`**: Directory to save all outputs.
+Optional overrides:
+- **`--model_name`**: Force architecture (`ResNet`, `TinyVGG`, `MiniCNN`). Auto-detected if omitted.
+- **`--figures_dir`**: Override plot output directory (default: `figures/evaluation_plots`).
+- **`--results_dir`**: Override CSV output directory (default: `results/evaluation_results`).
 
 ---
 
