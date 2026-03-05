@@ -51,36 +51,36 @@ logger = logging.getLogger(__name__)
 
 
 class EarlyStopping:
-    """Early stopping to stop training when validation loss doesn't improve."""
-    
+    """Early stopping on validation accuracy (maximize)."""
+
     def __init__(self, patience: int = 5, min_delta: float = 0.0, verbose: bool = True):
         """
         Args:
             patience (int): How many epochs to wait after last improvement
-            min_delta (float): Minimum change to qualify as improvement
+            min_delta (float): Minimum change in val_acc to count as improvement
             verbose (bool): Print messages
         """
         self.patience = patience
         self.min_delta = min_delta
         self.verbose = verbose
         self.counter = 0
-        self.best_loss = None
+        self.best_acc = None
         self.early_stop = False
         self.best_epoch = 0
-    
-    def __call__(self, val_loss: float, epoch: int) -> bool:
+
+    def __call__(self, val_acc: float, epoch: int) -> bool:
         """
-        Check if should stop training.
-        
+        Check if should stop training (monitors val_acc, higher is better).
+
         Returns:
             True if should stop, False otherwise
         """
-        if self.best_loss is None:
-            self.best_loss = val_loss
+        if self.best_acc is None:
+            self.best_acc = val_acc
             self.best_epoch = epoch
             if self.verbose:
-                logger.info(f"📊 Initial validation loss: {val_loss:.4f}")
-        elif val_loss > self.best_loss - self.min_delta:
+                logger.info(f"📊 Initial validation accuracy: {val_acc:.4f}")
+        elif val_acc < self.best_acc + self.min_delta:
             self.counter += 1
             if self.verbose:
                 logger.info(f"⏸️  EarlyStopping counter: {self.counter}/{self.patience}")
@@ -90,13 +90,13 @@ class EarlyStopping:
                     logger.info(f"🛑 Early stopping triggered at epoch {epoch}")
                 return True
         else:
-            improvement = self.best_loss - val_loss
-            self.best_loss = val_loss
+            improvement = val_acc - self.best_acc
+            self.best_acc = val_acc
             self.best_epoch = epoch
             self.counter = 0
             if self.verbose:
-                logger.info(f"📈 Validation loss improved by {improvement:.4f}")
-        
+                logger.info(f"📈 Val accuracy improved by {improvement:.4f}")
+
         return False
 
 
@@ -158,9 +158,9 @@ def train_epoch_with_augmentation(
         if augmentation_pipeline:
             X = augmentation_pipeline.apply_sample_augmentations(X)
 
-        # Apply Mixup or CutMix with 50% probability
+        # Apply Mixup or CutMix with 30% probability (less label noise)
         if use_mixup_cutmix and augmentation_pipeline:
-            if np.random.rand() < 0.5:
+            if np.random.rand() < 0.3:
                 # Randomly choose between Mixup and CutMix
                 if np.random.rand() < 0.5 and augmentation_pipeline.mixup_enabled:
                     X, y_a, y_b, lam = augmentation_pipeline.apply_mixup(X, y)
@@ -327,7 +327,7 @@ def train_model(
         min_delta=0.001,
         verbose=True
     )
-    
+
     # Training history
     history = {
         'train_loss': [],
@@ -336,36 +336,36 @@ def train_model(
         'val_acc': [],
         'learning_rates': []
     }
-    
+
     # Training loop
     logger.info(f"\n🚀 Starting training for {epochs} epochs...")
     logger.info(f"   Batch size: {int(config.training.batch_size)}")
     logger.info(f"   Learning rate: {learning_rate}")
     logger.info(f"   Optimizer: {config.training.optimizer}")
     logger.info(f"   Device: {device}\n")
-    
-    best_val_loss = float('inf')
+
+    best_val_acc = 0.0
     model_output_dir = os.path.join(output_dir, model_name)
     os.makedirs(model_output_dir, exist_ok=True)
     best_model_path = os.path.join(model_output_dir, f"{model_name}_best.pth")
-    
+
     for epoch in range(epochs):
         # Train with augmentation
         train_loss, train_acc = train_epoch_with_augmentation(
             model, train_loader, loss_fn, optimizer, device,
             augmentation_pipeline, use_mixup_cutmix=use_augmentation
         )
-        
+
         # Validation
         val_loss, val_acc = validation_step(model, val_loader, loss_fn, device)
-        
+
         # Record history
         history['train_loss'].append(train_loss)
         history['train_acc'].append(train_acc)
         history['val_loss'].append(val_loss)
         history['val_acc'].append(val_acc)
         history['learning_rates'].append(optimizer.param_groups[0]['lr'])
-        
+
         # Print progress
         logger.info(
             f"Epoch {epoch+1:3d}/{epochs} | "
@@ -373,22 +373,22 @@ def train_model(
             f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f} | "
             f"LR: {optimizer.param_groups[0]['lr']:.6f}"
         )
-        
-        # Save best model
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
+
+        # Save best model (track by val_acc)
+        if val_acc > best_val_acc:
+            best_val_acc = val_acc
             torch.save(model.state_dict(), best_model_path)
-            logger.info(f"   💾 Saved best model (val_loss: {val_loss:.4f})")
-        
-        # Early stopping check
-        if early_stopping(val_loss, epoch):
+            logger.info(f"   💾 Saved best model (val_acc: {val_acc:.4f})")
+
+        # Early stopping check (monitors val_acc)
+        if early_stopping(val_acc, epoch):
             logger.info(f"🛑 Early stopping at epoch {epoch+1}")
             break
-        
+
         # Learning rate scheduler step
         if scheduler:
             scheduler.step()
-    
+
     # Test evaluation
     if test_loader:
         logger.info("\n📊 Evaluating on test set...")
@@ -397,11 +397,11 @@ def train_model(
         history['test_loss'] = test_loss
         history['test_acc'] = test_acc
         logger.info(f"   Test Loss: {test_loss:.4f} | Test Acc: {test_acc:.4f}")
-    
+
     logger.info(f"\n✅ Training complete for {model_name}")
-    logger.info(f"   Best val loss: {best_val_loss:.4f}")
+    logger.info(f"   Best val acc: {best_val_acc:.4f}")
     logger.info(f"   Model saved: {best_model_path}")
-    
+
     return history
 
 
@@ -528,12 +528,46 @@ def main():
     logger.info(f"\n{'='*60}")
     logger.info("TRAINING SUMMARY")
     logger.info(f"{'='*60}")
-    
+
     for model_name, history in all_results.items():
         best_val_acc = max(history['val_acc'])
         test_acc = history.get('test_acc', 0)
         logger.info(f"{model_name.upper():10s} | Best Val Acc: {best_val_acc:.4f} | Test Acc: {test_acc:.4f}")
-    
+
+    logger.info(f"{'='*60}\n")
+
+    # ── Best model selection ───────────────────────────────────────────────────
+    # Pick the model with the highest test accuracy and copy its weights to
+    # models/best_model_weights/best_model_weights.pth
+    best_name = max(
+        all_results,
+        key=lambda m: all_results[m].get('test_acc', 0)
+    )
+    best_test_acc  = all_results[best_name].get('test_acc', 0)
+    best_val_acc   = max(all_results[best_name]['val_acc'])
+    best_src_path  = os.path.join(args.output_dir, best_name, f"{best_name}_best.pth")
+    best_dest_dir  = os.path.join(os.path.dirname(args.output_dir), "best_model_weights")
+    best_dest_path = os.path.join(best_dest_dir, "best_model_weights.pth")
+
+    os.makedirs(best_dest_dir, exist_ok=True)
+    import shutil
+    shutil.copy2(best_src_path, best_dest_path)
+
+    best_info = {
+        "model_name":   best_name,
+        "best_val_acc": best_val_acc,
+        "test_acc":     best_test_acc,
+        "source_path":  best_src_path,
+        "saved_to":     best_dest_path,
+    }
+    info_path = os.path.join(best_dest_dir, "best_model_info.json")
+    with open(info_path, 'w') as f:
+        json.dump(best_info, f, indent=2)
+
+    logger.info(f"🏆 Best model: {best_name.upper()}  "
+                f"(val_acc={best_val_acc:.4f}, test_acc={best_test_acc:.4f})")
+    logger.info(f"   Saved to: {best_dest_path}")
+    logger.info(f"   Info:     {info_path}")
     logger.info(f"{'='*60}\n")
     logger.info("🎉 All training complete!")
 

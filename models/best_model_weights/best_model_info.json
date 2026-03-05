@@ -1,0 +1,7 @@
+{
+  "model_name": "tinyvgg",
+  "best_val_acc": 0.93725,
+  "test_acc": 0.9321086261980831,
+  "source_path": "./models/all_models/tinyvgg/tinyvgg_best.pth",
+  "saved_to": "./models/best_model_weights/best_model_weights.pth"
+}
