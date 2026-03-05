@@ -231,42 +231,207 @@ class RandomErasing:
 
 class GaussianBlur:
     """
-    Gaussian blur augmentation.
+    Gaussian blur augmentation using torch.nn.functional.
     """
     
-    def __init__(self, kernel_size: int = 3, sigma: float = 1.0):
+    def __init__(self, kernel_size: int = 3, sigma: Tuple[float, float] = (0.1, 2.0), probability: float = 0.5):
         """
         Initialize Gaussian Blur.
         
         Args:
             kernel_size (int): Kernel size (must be odd)
-            sigma (float): Standard deviation
+            sigma (tuple): Range of sigma values (min, max)
+            probability (float): Probability of applying blur
         """
         self.kernel_size = kernel_size if kernel_size % 2 == 1 else kernel_size + 1
         self.sigma = sigma
-        
-        # Create gaussian kernel
-        kernel = self._create_gaussian_kernel(self.kernel_size, sigma)
-        self.register_buffer('kernel', kernel)
-    
-    @staticmethod
-    def _create_gaussian_kernel(size: int, sigma: float) -> torch.Tensor:
-        """Create gaussian kernel."""
-        x = np.linspace(-(size - 1) / 2, (size - 1) / 2, size)
-        gauss = np.exp(-x ** 2 / (2 * sigma ** 2))
-        kernel = gauss / gauss.sum()
-        return torch.from_numpy(kernel).float()
+        self.probability = probability
     
     def __call__(self, x: torch.Tensor) -> torch.Tensor:
         """Apply Gaussian blur."""
-        # For simplicity, return input
-        # In production, implement proper 2D convolution
+        if np.random.rand() > self.probability:
+            return x
+        
+        # Use torchvision's GaussianBlur if available
+        try:
+            from torchvision.transforms import functional as F
+            sigma = np.random.uniform(*self.sigma)
+            return F.gaussian_blur(x, self.kernel_size, [sigma, sigma])
+        except ImportError:
+            # Fallback: return unchanged
+            logger.warning("torchvision not available, skipping GaussianBlur")
+            return x
+
+
+class TorchvisionTransforms:
+    """
+    Wrapper for torchvision transforms to use in data pipeline.
+    
+    Provides common augmentations: rotation, flipping, color jitter, etc.
+    """
+    
+    def __init__(self, config: dict = None):
+        """
+        Initialize torchvision transforms.
+        
+        Args:
+            config (dict): Transform configuration
+                Example:
+                {
+                    'rotation': 15,
+                    'horizontal_flip': True,
+                    'vertical_flip': False,
+                    'color_jitter': {'brightness': 0.2, 'contrast': 0.2},
+                    'random_crop': {'size': 28, 'padding': 4}
+                }
+        """
+        from torchvision import transforms
+        
+        if config is None:
+            config = {}
+        
+        transform_list = []
+        
+        # Random rotation
+        if 'rotation' in config and config['rotation'] > 0:
+            transform_list.append(
+                transforms.RandomRotation(degrees=config['rotation'])
+            )
+            logger.info(f"Added RandomRotation: {config['rotation']} degrees")
+        
+        # Horizontal flip
+        if config.get('horizontal_flip', False):
+            transform_list.append(transforms.RandomHorizontalFlip(p=0.5))
+            logger.info("Added RandomHorizontalFlip")
+        
+        # Vertical flip
+        if config.get('vertical_flip', False):
+            transform_list.append(transforms.RandomVerticalFlip(p=0.5))
+            logger.info("Added RandomVerticalFlip")
+        
+        # Color jitter
+        if 'color_jitter' in config:
+            cj = config['color_jitter']
+            transform_list.append(
+                transforms.ColorJitter(
+                    brightness=cj.get('brightness', 0),
+                    contrast=cj.get('contrast', 0),
+                    saturation=cj.get('saturation', 0),
+                    hue=cj.get('hue', 0)
+                )
+            )
+            logger.info("Added ColorJitter")
+        
+        # Random crop
+        if 'random_crop' in config:
+            rc = config['random_crop']
+            transform_list.append(
+                transforms.RandomCrop(
+                    size=rc['size'],
+                    padding=rc.get('padding', 0)
+                )
+            )
+            logger.info(f"Added RandomCrop: {rc['size']}x{rc['size']}")
+        
+        # Random affine
+        if 'random_affine' in config:
+            ra = config['random_affine']
+            transform_list.append(
+                transforms.RandomAffine(
+                    degrees=ra.get('degrees', 0),
+                    translate=ra.get('translate', None),
+                    scale=ra.get('scale', None)
+                )
+            )
+            logger.info("Added RandomAffine")
+        
+        self.transform = transforms.Compose(transform_list) if transform_list else None
+    
+    def __call__(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply transforms."""
+        if self.transform is not None:
+            return self.transform(x)
+        return x
+
+
+class AlbumentationsTransforms:
+    """
+    Wrapper for albumentations library (if available).
+    
+    Provides advanced augmentations specifically for image data.
+    """
+    
+    def __init__(self, config: dict = None):
+        """
+        Initialize albumentations transforms.
+        
+        Args:
+            config (dict): Albumentations configuration
+        """
+        try:
+            import albumentations as A
+            from albumentations.pytorch import ToTensorV2
+            
+            if config is None:
+                config = {}
+            
+            transform_list = []
+            
+            # Add common augmentations based on config
+            if config.get('horizontal_flip', False):
+                transform_list.append(A.HorizontalFlip(p=0.5))
+            
+            if config.get('vertical_flip', False):
+                transform_list.append(A.VerticalFlip(p=0.5))
+            
+            if 'rotation' in config:
+                transform_list.append(
+                    A.Rotate(limit=config['rotation'], p=0.5)
+                )
+            
+            if config.get('shift_scale_rotate', False):
+                transform_list.append(
+                    A.ShiftScaleRotate(
+                        shift_limit=0.0625,
+                        scale_limit=0.1,
+                        rotate_limit=15,
+                        p=0.5
+                    )
+                )
+            
+            self.transform = A.Compose(transform_list) if transform_list else None
+            self.available = True
+            logger.info("Albumentations transforms initialized")
+            
+        except ImportError:
+            logger.warning("albumentations not available, skipping")
+            self.transform = None
+            self.available = False
+    
+    def __call__(self, x: np.ndarray) -> np.ndarray:
+        """
+        Apply albumentations.
+        
+        Args:
+            x (np.ndarray): Image as numpy array
+            
+        Returns:
+            Augmented image
+        """
+        if self.transform is not None and self.available:
+            augmented = self.transform(image=x)
+            return augmented['image']
         return x
 
 
 class AugmentationPipeline:
     """
-    Combines multiple augmentations into a pipeline.
+    Combines multiple augmentations into a comprehensive pipeline.
+    
+    Supports:
+    - Basic transforms (torchvision)
+    - Advanced augmentations (Mixup, CutMix, RandomErasing)
+    - Custom augmentations (albumentations)
     """
     
     def __init__(self, augmentations: dict = None):
@@ -279,16 +444,20 @@ class AugmentationPipeline:
                 {
                     'mixup': {'alpha': 1.0},
                     'cutmix': {'alpha': 1.0},
-                    'random_erasing': {'probability': 0.5}
+                    'random_erasing': {'probability': 0.5},
+                    'torchvision': {'rotation': 15, 'horizontal_flip': True},
+                    'gaussian_blur': {'kernel_size': 3, 'sigma': (0.1, 2.0)}
                 }
         """
         self.augmentations = []
         self.cutmix_enabled = False
         self.mixup_enabled = False
+        self.torchvision_aug = None
         
         if augmentations is None:
             augmentations = {}
         
+        # Batch-level augmentations (applied to batches during training)
         if 'mixup' in augmentations:
             self.mixup = Mixup(**augmentations['mixup'])
             self.mixup_enabled = True
@@ -299,28 +468,61 @@ class AugmentationPipeline:
             self.cutmix_enabled = True
             logger.info("CutMix augmentation enabled")
         
+        # Sample-level augmentations (applied per image)
         if 'random_erasing' in augmentations:
             self.random_erasing = RandomErasing(**augmentations['random_erasing'])
             self.augmentations.append(self.random_erasing)
             logger.info("Random Erasing augmentation enabled")
+        
+        if 'gaussian_blur' in augmentations:
+            self.gaussian_blur = GaussianBlur(**augmentations['gaussian_blur'])
+            self.augmentations.append(self.gaussian_blur)
+            logger.info("Gaussian Blur augmentation enabled")
+        
+        # Torchvision transforms
+        if 'torchvision' in augmentations:
+            self.torchvision_aug = TorchvisionTransforms(augmentations['torchvision'])
+            logger.info("Torchvision transforms enabled")
+        
+        # Albumentations (if available)
+        if 'albumentations' in augmentations:
+            self.albumentations_aug = AlbumentationsTransforms(augmentations['albumentations'])
+            if self.albumentations_aug.available:
+                logger.info("Albumentations enabled")
     
     def apply_mixup(self, x: torch.Tensor, y: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]:
-        """Apply Mixup augmentation."""
+        """Apply Mixup augmentation to batch."""
         if self.mixup_enabled:
             return self.mixup(x, y)
         return x, y, y, 1.0
     
     def apply_cutmix(self, x: torch.Tensor, y: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]:
-        """Apply CutMix augmentation."""
+        """Apply CutMix augmentation to batch."""
         if self.cutmix_enabled:
             return self.cutmix(x, y)
         return x, y, y, 1.0
     
     def apply_sample_augmentations(self, x: torch.Tensor) -> torch.Tensor:
         """Apply sample-level augmentations (non-mixing)."""
+        # Apply torchvision transforms first
+        if self.torchvision_aug is not None:
+            x = self.torchvision_aug(x)
+        
+        # Apply other augmentations
         for aug in self.augmentations:
             x = aug(x)
+        
         return x
+    
+    def get_batch_augmentation_probability(self) -> float:
+        """
+        Get probability of applying batch augmentation.
+        
+        Returns 0.5 if either Mixup or CutMix is enabled.
+        """
+        if self.mixup_enabled or self.cutmix_enabled:
+            return 0.5
+        return 0.0
 
 
 if __name__ == "__main__":
