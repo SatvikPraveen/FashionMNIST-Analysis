@@ -73,6 +73,9 @@ figures/**/*.png
 figures/**/*.jpg
 figures/**/*.pdf
 !figures/.gitkeep
+!figures/EDA_plots/*.png
+!figures/Traditional_ML_Algo_plots/*.png
+!figures/evaluation_plots/*.png
 
 # MLOps tracking
 mlruns/
