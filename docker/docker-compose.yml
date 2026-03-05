@@ -18,7 +18,7 @@ services:
       - ../results:/app/results
       - ../logs:/app/logs
       - ../config.yaml:/app/config.yaml
-    command: uvicorn src.api_server:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn src.serving.api:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - fashionmnist-network
     restart: unless-stopped

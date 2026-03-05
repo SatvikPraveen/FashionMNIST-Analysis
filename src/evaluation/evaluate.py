@@ -4,14 +4,14 @@ import pandas as pd
 from sklearn.metrics import confusion_matrix
 import torch
 from torch.utils.data import DataLoader
-from src.evaluation import (
+from src.evaluation.metrics import (
     load_csv_to_dataset,
     evaluate_model_with_confusion_matrix,
     visualize_predictions,
     save_confusion_matrix,
     save_metrics
 )
-from src.model_definitions import ResNet, BasicBlock
+from src.models.architectures import ResNet, BasicBlock
 
 # Define the device
 device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")

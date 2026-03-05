@@ -26,13 +26,13 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.config import load_config
-from src.dataset import create_dataloaders, get_default_transforms
-from src.data_augmentation import AugmentationPipeline, Mixup, CutMix
-from src.model_definitions import MiniCNN, TinyVGG, ResNet, BasicBlock
-from src.utils import (
+from src.config.settings import load_config
+from src.data.dataset import create_dataloaders, get_default_transforms
+from src.data.augmentation import AugmentationPipeline, Mixup, CutMix
+from src.models.architectures import MiniCNN, TinyVGG, ResNet, BasicBlock
+from src.training.utils import (
     get_device,
     print_device_info,
     count_parameters,

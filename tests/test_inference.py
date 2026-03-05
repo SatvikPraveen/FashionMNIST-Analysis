@@ -14,7 +14,7 @@ class TestRealWorldInference:
     
     def test_image_preprocessor_init(self):
         """Test ImagePreprocessor initialization."""
-        from src.real_world_inference import ImagePreprocessor
+        from src.serving.inference import ImagePreprocessor
         
         preprocessor = ImagePreprocessor(
             target_size=224,
@@ -27,7 +27,7 @@ class TestRealWorldInference:
     
     def test_image_preprocessing(self, tmp_path):
         """Test image preprocessing."""
-        from src.real_world_inference import ImagePreprocessor
+        from src.serving.inference import ImagePreprocessor
         
         preprocessor = ImagePreprocessor(target_size=224)
         
@@ -44,7 +44,7 @@ class TestRealWorldInference:
     
     def test_grayscale_to_rgb_conversion(self):
         """Test grayscale to RGB conversion."""
-        from src.real_world_inference import ImagePreprocessor
+        from src.serving.inference import ImagePreprocessor
         
         preprocessor = ImagePreprocessor(target_size=224, convert_to_rgb=True)
         
@@ -58,7 +58,7 @@ class TestRealWorldInference:
     
     def test_batch_preprocessing(self, tmp_path):
         """Test batch preprocessing."""
-        from src.real_world_inference import ImagePreprocessor
+        from src.serving.inference import ImagePreprocessor
         
         preprocessor = ImagePreprocessor(target_size=224)
         
@@ -79,8 +79,8 @@ class TestRealWorldInference:
     
     def test_real_world_inference(self):
         """Test RealWorldInference class."""
-        from src.real_world_inference import RealWorldInference, ImagePreprocessor
-        from src.model_definitions import MiniCNN
+        from src.serving.inference import RealWorldInference, ImagePreprocessor
+        from src.models.architectures import MiniCNN
         
         model = MiniCNN(in_channels=1, num_classes=10)
         preprocessor = ImagePreprocessor(target_size=28)
@@ -104,8 +104,8 @@ class TestRealWorldInference:
     
     def test_batch_inference(self):
         """Test batch inference."""
-        from src.real_world_inference import RealWorldInference, ImagePreprocessor
-        from src.model_definitions import MiniCNN
+        from src.serving.inference import RealWorldInference, ImagePreprocessor
+        from src.models.architectures import MiniCNN
         
         model = MiniCNN(in_channels=1, num_classes=10)
         preprocessor = ImagePreprocessor(target_size=28)
@@ -133,8 +133,8 @@ class TestRealWorldInference:
     
     def test_uncertainty_estimation(self):
         """Test prediction with uncertainty estimation."""
-        from src.real_world_inference import RealWorldInference, ImagePreprocessor
-        from src.model_definitions import MiniCNN
+        from src.serving.inference import RealWorldInference, ImagePreprocessor
+        from src.models.architectures import MiniCNN
         
         model = MiniCNN(in_channels=1, num_classes=10)
         preprocessor = ImagePreprocessor(target_size=28)
@@ -162,8 +162,8 @@ class TestExplainability:
     
     def test_gradcam_initialization(self):
         """Test Grad-CAM initialization."""
-        from src.explainability import GradCAM
-        from src.model_definitions import MiniCNN
+        from src.evaluation.explainability import GradCAM
+        from src.models.architectures import MiniCNN
         
         model = MiniCNN(in_channels=1, num_classes=10)
         
@@ -175,8 +175,8 @@ class TestExplainability:
     
     def test_attention_mapper_init(self):
         """Test AttentionMapper initialization."""
-        from src.explainability import AttentionMapper
-        from src.model_definitions import ResNet, BasicBlock
+        from src.evaluation.explainability import AttentionMapper
+        from src.models.architectures import ResNet, BasicBlock
         
         model = ResNet(BasicBlock, [2, 2, 2, 2], num_classes=10)
         
@@ -191,7 +191,7 @@ class TestDataAugmentation:
     
     def test_image_loader(self, tmp_path):
         """Test image loading utilities."""
-        from src.real_world_inference import load_and_preprocess_dataset, ImagePreprocessor
+        from src.serving.inference import load_and_preprocess_dataset, ImagePreprocessor
         
         # Create test images
         for i in range(3):
@@ -214,8 +214,8 @@ class TestEndToEndInference:
     
     def test_model_to_inference_pipeline(self):
         """Test complete inference pipeline."""
-        from src.model_definitions import MiniCNN
-        from src.real_world_inference import ImagePreprocessor, RealWorldInference
+        from src.models.architectures import MiniCNN
+        from src.serving.inference import ImagePreprocessor, RealWorldInference
         
         # Create model
         model = MiniCNN(in_channels=1, num_classes=10)
