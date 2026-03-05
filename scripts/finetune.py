@@ -97,7 +97,7 @@ def finetune_model(
             new_test_loader = test_loader
         
         # Create model
-        model = get_model(model_name, num_classes=10)
+        model = get_model(model_name, num_classes=10, in_channels=1)
         
         # Load pretrained weights if provided
         if pretrained_path:
