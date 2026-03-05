@@ -205,6 +205,38 @@ Below are sample predictions made by the fine-tuned ResNet model, showcasing the
 
 ---
 
+## **🆕 New Features (2026)**
+
+### **Production-Ready Training Pipeline**
+
+- ✅ **End-to-End CLI Scripts**: `train.py`, `finetune.py`, `prepare_data.py`
+- ✅ **Data Augmentation**: Mixup, CutMix, RandomErasing, torchvision transforms - fully integrated!
+- ✅ **Multi-Device Support**: Auto-detects CUDA, MPS (Apple Silicon M1/M2/M3), or CPU
+- ✅ **Config-Driven**: All parameters in `config.yaml` for reproducibility
+- ✅ **Model Checkpointing**: Saves best models automatically with early stopping
+- ✅ **Comprehensive Logging**: Training history, metrics tracking, JSON outputs
+
+### **Quick Start - New Pipeline**
+
+```bash
+# 1. Prepare data
+python scripts/prepare_data.py
+
+# 2. Train all models (MiniCNN, TinyVGG, ResNet)
+python scripts/train.py --model all
+
+# 3. Fine-tune best model
+python scripts/finetune.py --model resnet --pretrained models/all_models/resnet_best.pth
+
+# 4. Evaluate
+python main.py --model_path models/all_models/resnet_best.pth \
+               --test_csv data_preparation/fashion_mnist_test.csv
+```
+
+**📖 See [USAGE_GUIDE.md](USAGE_GUIDE.md) for complete instructions**
+
+---
+
 ## **How to Run**
 
 ### Environment Setup
