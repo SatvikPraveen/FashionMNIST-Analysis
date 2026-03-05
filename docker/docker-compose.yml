@@ -4,7 +4,7 @@ services:
   # FastAPI Backend Service
   api:
     build:
-      context: .
+      context: ..
       dockerfile: docker/Dockerfile
     container_name: fashionmnist-api
     ports:
@@ -13,11 +13,11 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
     volumes:
-      - ./models:/app/models
-      - ./data:/app/data
-      - ./results:/app/results
-      - ./logs:/app/logs
-      - ./config.yaml:/app/config.yaml
+      - ../models:/app/models
+      - ../data:/app/data
+      - ../results:/app/results
+      - ../logs:/app/logs
+      - ../config.yaml:/app/config.yaml
     command: uvicorn src.api_server:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - fashionmnist-network
@@ -32,7 +32,7 @@ services:
   # Streamlit Dashboard Service
   dashboard:
     build:
-      context: .
+      context: ..
       dockerfile: docker/Dockerfile
     container_name: fashionmnist-dashboard
     ports:
@@ -41,11 +41,11 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
     volumes:
-      - ./models:/app/models
-      - ./data:/app/data
-      - ./results:/app/results
-      - ./logs:/app/logs
-      - ./config.yaml:/app/config.yaml
+      - ../models:/app/models
+      - ../data:/app/data
+      - ../results:/app/results
+      - ../logs:/app/logs
+      - ../config.yaml:/app/config.yaml
     command: streamlit run apps/streamlit_dashboard.py --server.port=8501 --server.address=0.0.0.0
     networks:
       - fashionmnist-network
@@ -56,7 +56,7 @@ services:
   # Gradio App Service
   gradio:
     build:
-      context: .
+      context: ..
       dockerfile: docker/Dockerfile
     container_name: fashionmnist-gradio
     ports:
@@ -65,11 +65,11 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
     volumes:
-      - ./models:/app/models
-      - ./data:/app/data
-      - ./results:/app/results
-      - ./logs:/app/logs
-      - ./config.yaml:/app/config.yaml
+      - ../models:/app/models
+      - ../data:/app/data
+      - ../results:/app/results
+      - ../logs:/app/logs
+      - ../config.yaml:/app/config.yaml
     command: python apps/gradio_app.py
     networks:
       - fashionmnist-network
@@ -80,7 +80,7 @@ services:
   # Optional: Jupyter Lab for development
   jupyter:
     build:
-      context: .
+      context: ..
       dockerfile: docker/Dockerfile
     container_name: fashionmnist-jupyter
     ports:
@@ -90,7 +90,7 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - JUPYTER_ENABLE_LAB=yes
     volumes:
-      - ./:/app
+      - ../:/app
     command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=''
     networks:
       - fashionmnist-network
