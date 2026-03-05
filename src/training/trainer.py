@@ -153,7 +153,11 @@ def train_epoch_with_augmentation(
     
     for batch_idx, (X, y) in enumerate(dataloader):
         X, y = X.to(device), y.to(device)
-        
+
+        # Apply sample-level augmentations (rotation, flips, erasing, etc.)
+        if augmentation_pipeline:
+            X = augmentation_pipeline.apply_sample_augmentations(X)
+
         # Apply Mixup or CutMix with 50% probability
         if use_mixup_cutmix and augmentation_pipeline:
             if np.random.rand() < 0.5:
