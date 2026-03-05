@@ -1,3 +1,22 @@
+"""
+Standalone model evaluation script for FashionMNIST-Analysis.
+
+Loads a pre-trained ResNet from disk, runs it over a test CSV, and saves:
+    - predictions_vector.csv  (true vs. predicted labels)
+    - confusion matrix figure
+    - evaluation_metrics.csv  (accuracy, precision, recall, F1)
+    - prediction visualisation grid
+
+CLI usage:
+    python src/cli/evaluate.py \\
+        --model_path models/best_model_weights/best_model_weights.pth \\
+        --test_csv   data/processed/test.csv \\
+        --test_dir   tests/
+
+    # Or run directly:
+    python -m src.evaluation.evaluate --model_path ... --test_csv ...
+"""
+
 import os
 import argparse
 import pandas as pd
@@ -13,7 +32,7 @@ from src.evaluation.metrics import (
 )
 from src.models.architectures import ResNet, BasicBlock
 
-# Define the device
+# Auto-select best available device (CUDA > MPS > CPU)
 device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 print(f"[INFO] Using device: {device}")
 

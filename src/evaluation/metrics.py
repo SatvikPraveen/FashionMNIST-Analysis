@@ -1,3 +1,17 @@
+"""
+Evaluation metrics and visualisation helpers for FashionMNIST-Analysis.
+
+This module provides:
+    - load_csv_to_dataset:                  Load a flat CSV into a PyTorch TensorDataset.
+    - evaluate_model_with_confusion_matrix: Run inference and collect loss/accuracy/predictions.
+    - visualize_predictions:                Plot a 3×3 grid of true vs. predicted labels.
+    - save_confusion_matrix:                Generate and persist a confusion matrix figure.
+    - save_metrics:                         Compute and save precision/recall/F1/accuracy to CSV.
+
+Typical usage:
+    from src.evaluation.metrics import evaluate_model_with_confusion_matrix, save_metrics
+"""
+
 import torch
 from torch.utils.data import TensorDataset
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, precision_score, recall_score, f1_score, accuracy_score

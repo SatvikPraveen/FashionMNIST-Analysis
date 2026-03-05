@@ -1,3 +1,3 @@
-"""Evaluation metrics and explainability tools."""
+"""Evaluation metrics, visualisation, and explainability tools."""
 
 __all__ = []
