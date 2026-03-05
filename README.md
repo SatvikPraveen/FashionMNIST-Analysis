@@ -387,8 +387,8 @@ For comprehensive guides and documentation, please refer to the `docs/` folder:
 - **[FEATURES.md](docs/FEATURES.md)** - Complete feature documentation (800+ lines) covering all new modules and capabilities.
 - **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Deployment guide for Docker, Kubernetes, and cloud platforms.
 - **[IMPLEMENTATION_SUMMARY.md](docs/IMPLEMENTATION_SUMMARY.md)** - Detailed implementation report of the modernization project.
-- **[CONTRIBUTING.md](docs/CONTRIBUTING.md)** - Guidelines for contributing to the project.
-- **[CODE_OF_CONDUCT.md](docs/CODE_OF_CONDUCT.md)** - Community code of conduct.
+- **[CONTRIBUTING.md](.github/CONTRIBUTING.md)** - Guidelines for contributing to the project.
+- **[CODE_OF_CONDUCT.md](.github/CODE_OF_CONDUCT.md)** - Community code of conduct.
 
 ---
 
