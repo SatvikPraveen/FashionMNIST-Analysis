@@ -20,7 +20,9 @@ import os
 folders = [
     "data/raw",
     "data/processed",
-    "models/all_models",
+    "models/all_models/minicnn",
+    "models/all_models/tinyvgg",
+    "models/all_models/resnet",
     "models/best_model_weights",
     "logs",
     "checkpoints",

@@ -226,10 +226,10 @@ python scripts/prepare_data.py
 python scripts/train.py --model all
 
 # 3. Fine-tune best model
-python scripts/finetune.py --model resnet --pretrained models/all_models/resnet_best.pth
+python scripts/finetune.py --model resnet --pretrained models/all_models/resnet/resnet_best.pth
 
 # 4. Evaluate
-python main.py --model_path models/all_models/resnet_best.pth \
+python main.py --model_path models/all_models/resnet/resnet_best.pth \
                --test_csv data_preparation/fashion_mnist_test.csv
 ```
 
