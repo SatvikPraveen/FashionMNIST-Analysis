@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
 """
-CLI wrapper for hyperparameter tuning script.
-Provides backward compatibility for scripts/finetune.py
+CLI entry-point for hyperparameter tuning.
+
+Delegates to src.training.tuner, which performs a grid search over
+learning rate, batch size, and early-stopping patience, saving per-run
+JSON results to results/fine_tuning_results/.
+
+Usage (from project root):
+    python src/cli/finetune.py --model minicnn
+    python src/cli/finetune.py --model all
+
+Run `python src/cli/finetune.py --help` for full options.
 """
 import sys
 from pathlib import Path
 
-# Add project root to path
+# Ensure the project root is on sys.path so `src.*` imports resolve
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-# Import and run the tuning module
 from src.training.tuner import main
 
 if __name__ == "__main__":

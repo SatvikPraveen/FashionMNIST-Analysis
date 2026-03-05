@@ -1,3 +1,16 @@
+"""
+Training utility functions for FashionMNIST-Analysis.
+
+This module provides:
+    - Device detection (CUDA / MPS / CPU) with automatic priority selection.
+    - Model introspection helpers (parameter counts, summary).
+    - Core per-epoch training, validation, and test step functions that are
+      shared by both the full trainer and the hyperparameter tuner.
+
+Usage:
+    from src.training.utils import get_device, train_step, validation_step, test_step
+"""
+
 import torch
 from typing import Tuple, Optional
 import logging
