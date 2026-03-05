@@ -242,7 +242,7 @@ python src/cli/finetune.py \
   --pretrained models/best_model_weights/best_model_weights.pth
 ```
 
-**📖 See [USAGE_GUIDE.md](USAGE_GUIDE.md) for complete instructions**
+**📖 See [USAGE_GUIDE.md](docs/USAGE_GUIDE.md) for complete instructions**
 
 ---
 
