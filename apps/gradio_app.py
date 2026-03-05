@@ -14,9 +14,9 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.model_definitions import ResNet, BasicBlock, MiniCNN, TinyVGG
-from src.real_world_inference import ImagePreprocessor, RealWorldInference
-from src.transfer_learning import TransferLearningModel
+from src.models.architectures import ResNet, BasicBlock, MiniCNN, TinyVGG
+from src.serving.inference import ImagePreprocessor, RealWorldInference
+from src.models.transfer import TransferLearningModel
 
 
 # Class names

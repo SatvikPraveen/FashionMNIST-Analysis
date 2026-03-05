@@ -5,11 +5,11 @@ Unit tests for model definitions and utilities.
 import pytest
 import torch
 import numpy as np
-from src.model_definitions import ResNet, BasicBlock, MiniCNN, TinyVGG
-from src.transfer_learning import TransferLearningModel, load_vit_model
-from src.ensemble import EnsembleVoting, StackingEnsemble
-from src.data_augmentation import Mixup, CutMix, RandomErasing
-from src.monitoring import MetricsTracker, DriftDetector
+from src.models.architectures import ResNet, BasicBlock, MiniCNN, TinyVGG
+from src.models.transfer import TransferLearningModel, load_vit_model
+from src.models.ensemble import EnsembleVoting, StackingEnsemble
+from src.data.augmentation import Mixup, CutMix, RandomErasing
+from src.monitoring.tracker import MetricsTracker, DriftDetector
 
 
 class TestModelDefinitions:
@@ -196,7 +196,7 @@ class TestMonitoring:
     
     def test_prediction_monitor(self):
         """Test prediction monitor."""
-        from src.monitoring import PredictionMonitor
+        from src.monitoring.tracker import PredictionMonitor
         
         monitor = PredictionMonitor(num_classes=10, window_size=50)
         
@@ -221,7 +221,7 @@ class TestConfig:
     
     def test_config_loading(self):
         """Test config loading."""
-        from src.config import load_config
+        from src.config.settings import load_config
         
         config = load_config("config.yaml")
         
@@ -230,7 +230,7 @@ class TestConfig:
     
     def test_config_get_with_dot_notation(self):
         """Test config get with dot notation."""
-        from src.config import load_config
+        from src.config.settings import load_config
         
         config = load_config("config.yaml")
         

@@ -119,10 +119,10 @@ async def initialize_model(
         Model information
     """
     try:
-        from src.config import load_config
-        from src.real_world_inference import ImagePreprocessor, RealWorldInference
-        from src.model_definitions import ResNet, BasicBlock
-        from src.transfer_learning import TransferLearningModel
+        from src.config.settings import load_config
+        from src.serving.inference import ImagePreprocessor, RealWorldInference
+        from src.models.architectures import ResNet, BasicBlock
+        from src.models.transfer import TransferLearningModel
         
         # Load config
         model_state.config = load_config(config_path)

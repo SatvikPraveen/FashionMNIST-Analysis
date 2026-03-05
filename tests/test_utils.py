@@ -5,7 +5,7 @@ Unit tests for utility functions.
 import pytest
 import torch
 import numpy as np
-from src.utils import train_step, validation_step, test_step
+from src.training.utils import train_step, validation_step, test_step
 
 
 class TestUtilFunctions:
@@ -13,7 +13,7 @@ class TestUtilFunctions:
     
     def test_train_step(self):
         """Test training step."""
-        from src.model_definitions import MiniCNN
+        from src.models.architectures import MiniCNN
         
         model = MiniCNN(in_channels=1, num_classes=10)
         optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
@@ -36,7 +36,7 @@ class TestUtilFunctions:
     
     def test_validation_step(self):
         """Test validation step."""
-        from src.model_definitions import MiniCNN
+        from src.models.architectures import MiniCNN
         
         model = MiniCNN(in_channels=1, num_classes=10)
         loss_fn = torch.nn.CrossEntropyLoss()
@@ -58,7 +58,7 @@ class TestUtilFunctions:
     
     def test_test_step(self):
         """Test testing step."""
-        from src.model_definitions import MiniCNN
+        from src.models.architectures import MiniCNN
         
         model = MiniCNN(in_channels=1, num_classes=10)
         loss_fn = torch.nn.CrossEntropyLoss()
@@ -112,7 +112,7 @@ class TestEvaluation:
     
     def test_evaluate_model_basic(self):
         """Test basic model evaluation."""
-        from src.model_definitions import MiniCNN
+        from src.models.architectures import MiniCNN
         
         model = MiniCNN(in_channels=1, num_classes=10)
         model.eval()
@@ -162,7 +162,7 @@ class TestModelSaving:
     
     def test_model_save_load(self, tmp_path):
         """Test saving and loading model."""
-        from src.model_definitions import MiniCNN
+        from src.models.architectures import MiniCNN
         
         model = MiniCNN(in_channels=1, num_classes=10)
         model_path = tmp_path / "model.pth"

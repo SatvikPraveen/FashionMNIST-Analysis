@@ -15,13 +15,13 @@ from itertools import product
 from typing import Optional
 import torch
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.config import load_config, Config
-from src.dataset import create_dataloaders
-from src.model_definitions import MiniCNN, TinyVGG, ResNet, BasicBlock
-from src.utils import get_device, print_device_info
-from train import train_model, get_model
+from src.config.settings import load_config, Config
+from src.data.dataset import create_dataloaders
+from src.models.architectures import MiniCNN, TinyVGG, ResNet, BasicBlock
+from src.training.utils import get_device, print_device_info
+from .trainer import train_model, get_model
 
 logging.basicConfig(
     level=logging.INFO,
