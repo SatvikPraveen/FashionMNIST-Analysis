@@ -49,6 +49,10 @@ imgaug>=0.4.0
 mlflow>=2.0.0
 wandb>=0.14.0
 
+# Web Applications
+gradio>=4.0.0
+streamlit>=1.28.0
+
 # API & Production
 fastapi>=0.100.0
 uvicorn>=0.23.0
