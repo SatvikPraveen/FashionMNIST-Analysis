@@ -301,7 +301,9 @@ def train_model(
     logger.info(f"   Device: {device}\n")
     
     best_val_loss = float('inf')
-    best_model_path = os.path.join(output_dir, f"{model_name}_best.pth")
+    model_output_dir = os.path.join(output_dir, model_name)
+    os.makedirs(model_output_dir, exist_ok=True)
+    best_model_path = os.path.join(model_output_dir, f"{model_name}_best.pth")
     
     for epoch in range(epochs):
         # Train with augmentation
@@ -472,7 +474,7 @@ def main():
         all_results[model_name] = history
         
         # Save history
-        history_path = os.path.join(args.output_dir, f"{model_name}_history.json")
+        history_path = os.path.join(args.output_dir, model_name, f"{model_name}_history.json")
         with open(history_path, 'w') as f:
             json.dump(history, f, indent=2)
         

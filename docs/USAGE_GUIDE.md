@@ -41,7 +41,7 @@ python scripts/train.py --model minicnn --use-csv \
 ```bash
 # Fine-tune ResNet with grid search
 python scripts/finetune.py --model resnet \
-    --pretrained models/all_models/resnet_best.pth \
+    --pretrained models/all_models/resnet/resnet_best.pth \
     --learning-rates 1e-5 5e-6 \
     --batch-sizes 32 64 \
     --patience-values 2 3
@@ -58,7 +58,7 @@ python scripts/finetune.py --model minicnn \
 ```bash
 # Evaluate model on test set
 python main.py \
-    --model_path models/all_models/resnet_best.pth \
+    --model_path models/all_models/resnet/resnet_best.pth \
     --test_csv data_preparation/fashion_mnist_test.csv \
     --test_dir results/evaluation
 ```
@@ -175,12 +175,15 @@ After training, you'll have:
 
 ```
 models/all_models/
-├── minicnn_best.pth           # Best MiniCNN model weights
-├── minicnn_history.json       # Training history
-├── tinyvgg_best.pth           # Best TinyVGG model weights
-├── tinyvgg_history.json       # Training history
-├── resnet_best.pth            # Best ResNet model weights
-└── resnet_history.json        # Training history
+├── minicnn/
+│   ├── minicnn_best.pth           # Best MiniCNN model weights
+│   └── minicnn_history.json       # Training history
+├── tinyvgg/
+│   ├── tinyvgg_best.pth           # Best TinyVGG model weights
+│   └── tinyvgg_history.json       # Training history
+└── resnet/
+    ├── resnet_best.pth            # Best ResNet model weights
+    └── resnet_history.json        # Training history
 
 results/fine_tuning_results/
 ├── resnet_bs32_lr1e-05_pat2.pth
@@ -210,11 +213,11 @@ python scripts/train.py --model all
 
 # 3. Fine-tune best model
 python scripts/finetune.py --model resnet \
-    --pretrained models/all_models/resnet_best.pth
+    --pretrained models/all_models/resnet/resnet_best.pth
 
 # 4. Evaluate
 python main.py \
-    --model_path models/all_models/resnet_best.pth \
+    --model_path models/all_models/resnet/resnet_best.pth \
     --test_csv data_preparation/fashion_mnist_test.csv
 ```
 
@@ -227,7 +230,7 @@ python main.py \
 python scripts/train.py --model minicnn
 
 # Check results
-cat models/all_models/minicnn_history.json
+cat models/all_models/minicnn/minicnn_history.json
 ```
 
 ### Example 3: Use Pre-existing CSV Data

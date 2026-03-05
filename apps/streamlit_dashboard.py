@@ -78,9 +78,25 @@ CLASS_NAMES = [
 ]
 
 
+def _get_device() -> torch.device:
+    """Return best available device (CUDA > MPS > CPU)."""
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+
 @st.cache_resource
-def load_model(model_type: str, device: str = "cpu"):
-    """Load model with caching."""
+def load_model(model_type: str):
+    """Load model architecture and best available weights."""
+    # Weight file candidates: new-style training output, then legacy files
+    _WEIGHTS = {
+        "ResNet":  ["models/all_models/resnet/resnet_best.pth",   "models/all_models/resnet/resnet_model_weights.pth"],
+        "MiniCNN": ["models/all_models/minicnn/minicnn_best.pth",  "models/all_models/minicnn/mini_cnn_model_weights.pth"],
+        "TinyVGG": ["models/all_models/tinyvgg/tinyvgg_best.pth",  "models/all_models/tinyvgg/tiny_vgg_model_weights.pth"],
+    }
+
     try:
         if model_type == "ResNet":
             model = ResNet(BasicBlock, [2, 2, 2, 2], num_classes=10)
@@ -95,7 +111,24 @@ def load_model(model_type: str, device: str = "cpu"):
             except ImportError:
                 st.error("TIMM library not installed")
                 return None
-        
+        else:
+            st.error(f"Unknown model type: {model_type}")
+            return None
+
+        # Load trained weights
+        device = _get_device()
+        weight_paths = _WEIGHTS.get(model_type, [])
+        loaded = False
+        for wp in weight_paths:
+            if Path(wp).exists():
+                state = torch.load(wp, map_location=device, weights_only=True)
+                model.load_state_dict(state)
+                st.sidebar.caption(f"✅ Weights: {wp}")
+                loaded = True
+                break
+        if not loaded:
+            st.sidebar.warning(f"⚠️ No saved weights found for {model_type}; using random init.")
+
         model.to(device).eval()
         return model
     except Exception as e:
@@ -133,12 +166,12 @@ if mode == "Single Prediction":
         st.subheader("Prediction Results")
         
         if image_array is not None:
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            
+            device = _get_device()
+
             # Load model and preprocessor
-            model = load_model(model_type, device)
+            model = load_model(model_type)
             preprocessor = get_preprocessor()
-            
+
             if model:
                 inference = RealWorldInference(
                     model=model,
@@ -191,8 +224,8 @@ elif mode == "Batch Prediction":
     )
     
     if uploaded_files:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = load_model(model_type, device)
+        device = _get_device()
+        model = load_model(model_type)
         preprocessor = get_preprocessor()
         
         if model:
@@ -244,18 +277,18 @@ elif mode == "Model Comparison":
         st.image(image, caption="Test Image", use_column_width=True)
         image_array = np.array(image)
         
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = _get_device()
         preprocessor = get_preprocessor()
-        
+
         # Compare models
         models_to_compare = ["ResNet", "MiniCNN", "TinyVGG"]
-        
+
         st.subheader("Predictions")
-        
+
         comparison_data = []
-        
+
         for model_name in models_to_compare:
-            model = load_model(model_name, device)
+            model = load_model(model_name)
             
             if model:
                 inference = RealWorldInference(
@@ -301,10 +334,10 @@ elif mode == "Explainability":
         st.image(image, caption="Input Image", use_column_width=True)
         image_array = np.array(image)
         
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = load_model(model_type, device)
+        device = _get_device()
+        model = load_model(model_type)
         preprocessor = get_preprocessor()
-        
+
         if model:
             # Make prediction
             inference = RealWorldInference(
