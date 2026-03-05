@@ -49,6 +49,13 @@ imgaug>=0.4.0
 mlflow>=2.0.0
 wandb>=0.14.0
 
+# Web Frameworks & APIs
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+streamlit>=1.28.0
+gradio>=4.0.0
+python-multipart>=0.0.6
+
 # Web Applications
 gradio>=4.0.0
 streamlit>=1.28.0
