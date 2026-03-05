@@ -86,7 +86,10 @@ inference:
 # Paths Configuration
 paths:
   data_dir: "./data"
+  raw_data_dir: "./data/raw"
+  processed_data_dir: "./data/processed"
   models_dir: "./models"
+  checkpoints_dir: "./checkpoints"
   results_dir: "./results"
   logs_dir: "./logs"
   plots_dir: "./figures"
