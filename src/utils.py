@@ -1,5 +1,115 @@
 import torch
-from typing import Tuple
+from typing import Tuple, Optional
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# DEVICE DETECTION AND UTILITIES
+# ============================================================================
+
+def get_device(force_cpu: bool = False) -> torch.device:
+    """
+    Automatically detect the best available device.
+    
+    Priority: CUDA > MPS (Apple Silicon) > CPU
+    
+    Args:
+        force_cpu (bool): Force CPU usage even if GPU is available
+        
+    Returns:
+        torch.device: The selected device
+    """
+    if force_cpu:
+        device = torch.device("cpu")
+        logger.info("🖥️  Device: CPU (forced)")
+        return device
+    
+    # Check CUDA
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        logger.info(f"🚀 Device: CUDA - {torch.cuda.get_device_name(0)}")
+        logger.info(f"   GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
+        return device
+    
+    # Check MPS (Apple Silicon)
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        device = torch.device("mps")
+        logger.info("🍎 Device: MPS (Apple Silicon)")
+        return device
+    
+    # Fallback to CPU
+    device = torch.device("cpu")
+    logger.info("🖥️  Device: CPU")
+    return device
+
+
+def print_device_info():
+    """Print detailed device information."""
+    print("\n" + "="*60)
+    print("DEVICE INFORMATION")
+    print("="*60)
+    
+    # CUDA
+    if torch.cuda.is_available():
+        print(f"✅ CUDA Available: Yes")
+        print(f"   CUDA Version: {torch.version.cuda}")
+        print(f"   Device Count: {torch.cuda.device_count()}")
+        for i in range(torch.cuda.device_count()):
+            print(f"   Device {i}: {torch.cuda.get_device_name(i)}")
+            props = torch.cuda.get_device_properties(i)
+            print(f"      Memory: {props.total_memory / 1e9:.2f} GB")
+    else:
+        print(f"❌ CUDA Available: No")
+    
+    # MPS
+    if hasattr(torch.backends, "mps"):
+        print(f"✅ MPS Available: {torch.backends.mps.is_available()}")
+        if torch.backends.mps.is_available():
+            print(f"   MPS Built: {torch.backends.mps.is_built()}")
+    else:
+        print(f"❌ MPS Available: No")
+    
+    # Selected device
+    device = get_device()
+    print(f"\n🎯 Selected Device: {device}")
+    print("="*60 + "\n")
+    
+    return device
+
+
+def count_parameters(model: torch.nn.Module) -> int:
+    """Count total trainable parameters in a model."""
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+def model_summary(model: torch.nn.Module, input_size: Tuple[int, ...] = None):
+    """Print model summary with parameter counts."""
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = count_parameters(model)
+    
+    print("\n" + "="*60)
+    print("MODEL SUMMARY")
+    print("="*60)
+    print(f"Total parameters: {total_params:,}")
+    print(f"Trainable parameters: {trainable_params:,}")
+    print(f"Non-trainable parameters: {total_params - trainable_params:,}")
+    
+    if input_size:
+        try:
+            from torchinfo import summary
+            print("\nDetailed Summary:")
+            summary(model, input_size=input_size)
+        except ImportError:
+            logger.warning("torchinfo not available for detailed summary")
+    
+    print("="*60 + "\n")
+
+
+# ============================================================================
+# TRAINING AND VALIDATION FUNCTIONS
+# ============================================================================
 
 # train step function - for training model
 def train_step(model: torch.nn.Module,
