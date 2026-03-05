@@ -100,13 +100,14 @@ class EarlyStopping:
         return False
 
 
-def get_model(model_name: str, num_classes: int = 10) -> nn.Module:
+def get_model(model_name: str, num_classes: int = 10, in_channels: int = 1) -> nn.Module:
     """
     Get model by name.
     
     Args:
         model_name (str): Model architecture name
         num_classes (int): Number of output classes
+        in_channels (int): Number of input channels (1 for grayscale, 3 for RGB)
         
     Returns:
         Model instance
@@ -114,9 +115,9 @@ def get_model(model_name: str, num_classes: int = 10) -> nn.Module:
     model_name = model_name.lower()
     
     if model_name == "minicnn":
-        return MiniCNN(num_classes=num_classes)
+        return MiniCNN(in_channels=in_channels, num_classes=num_classes)
     elif model_name == "tinyvgg":
-        return TinyVGG(num_classes=num_classes)
+        return TinyVGG(in_channels=in_channels, hidden_units=64, num_classes=num_classes)
     elif model_name == "resnet":
         return ResNet(BasicBlock, [2, 2, 2, 2], num_classes=num_classes)
     else:
@@ -221,25 +222,31 @@ def train_model(
     # Setup loss and optimizer
     loss_fn = nn.CrossEntropyLoss()
     
+    # Ensure numeric values
+    learning_rate = float(config.training.learning_rate)
+    weight_decay = float(config.training.weight_decay)
+    
     if config.training.optimizer.lower() == "adam":
         optimizer = optim.Adam(
             model.parameters(),
-            lr=config.training.learning_rate,
-            weight_decay=config.training.weight_decay
+            lr=learning_rate,
+            weight_decay=weight_decay
         )
     else:
         optimizer = optim.SGD(
             model.parameters(),
-            lr=config.training.learning_rate,
+            lr=learning_rate,
             momentum=0.9,
-            weight_decay=config.training.weight_decay
+            weight_decay=weight_decay
         )
     
     # Setup learning rate scheduler
     scheduler = None
+    epochs = int(config.training.epochs)
+    
     if config.training.scheduler.lower() == "cosine":
         scheduler = optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=config.training.epochs
+            optimizer, T_max=epochs
         )
     elif config.training.scheduler.lower() == "step":
         scheduler = optim.lr_scheduler.StepLR(
@@ -287,16 +294,16 @@ def train_model(
     }
     
     # Training loop
-    logger.info(f"\n🚀 Starting training for {config.training.epochs} epochs...")
-    logger.info(f"   Batch size: {config.training.batch_size}")
-    logger.info(f"   Learning rate: {config.training.learning_rate}")
+    logger.info(f"\n🚀 Starting training for {epochs} epochs...")
+    logger.info(f"   Batch size: {int(config.training.batch_size)}")
+    logger.info(f"   Learning rate: {learning_rate}")
     logger.info(f"   Optimizer: {config.training.optimizer}")
     logger.info(f"   Device: {device}\n")
     
     best_val_loss = float('inf')
     best_model_path = os.path.join(output_dir, f"{model_name}_best.pth")
     
-    for epoch in range(config.training.epochs):
+    for epoch in range(epochs):
         # Train with augmentation
         train_loss, train_acc = train_epoch_with_augmentation(
             model, train_loader, loss_fn, optimizer, device,
@@ -315,7 +322,7 @@ def train_model(
         
         # Print progress
         logger.info(
-            f"Epoch {epoch+1:3d}/{config.training.epochs} | "
+            f"Epoch {epoch+1:3d}/{epochs} | "
             f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f} | "
             f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f} | "
             f"LR: {optimizer.param_groups[0]['lr']:.6f}"
