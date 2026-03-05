@@ -17,6 +17,8 @@ from torch.utils.data import TensorDataset
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, precision_score, recall_score, f1_score, accuracy_score
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # non-interactive backend — prevents plt.show() from blocking
 import matplotlib.pyplot as plt
 import os
 
@@ -24,17 +26,22 @@ import os
 def load_csv_to_dataset(csv_path):
     """
     Loads data from a CSV file into a PyTorch TensorDataset.
+    Applies the same preprocessing as the training pipeline:
+      1. Divide pixel values by 255.0  (raw CSV stores uint8 0-255)
+      2. Normalize with Fashion-MNIST statistics: mean=0.2860, std=0.3530
 
     Args:
         csv_path (str): Path to the CSV file.
 
     Returns:
-        TensorDataset: A dataset containing features and labels as tensors.
+        TensorDataset: A dataset containing normalised features and labels as tensors.
     """
-
     df = pd.read_csv(csv_path)
     labels = torch.tensor(df.iloc[:, 0].values, dtype=torch.long)
     features = torch.tensor(df.iloc[:, 1:].values, dtype=torch.float32).reshape(-1, 1, 28, 28)
+    # Replicate training transforms: /255  →  Normalize(0.2860, 0.3530)
+    features = features / 255.0
+    features = (features - 0.2860) / 0.3530
     return TensorDataset(features, labels)
 
 # Evaluate model with confusion matrix
@@ -114,7 +121,7 @@ def visualize_predictions(model, dataloader,  device, result_dir= "figures/evalu
     os.makedirs(result_dir, exist_ok=True)
     plt.savefig(save_path, bbox_inches="tight")
     print(f"✅ Prediction visualization saved at: {save_path}")
-    plt.show()
+    plt.close()
 
 # Function to generate and save confusion matrix
 def save_confusion_matrix(true_labels, predictions, class_names, result_dir="tests", filename="confusion_matrix.png"):

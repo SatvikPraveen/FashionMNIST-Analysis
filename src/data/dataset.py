@@ -146,9 +146,9 @@ def get_default_transforms(image_size: int = 28, augment: bool = False) -> trans
     if image_size != 28:
         transform_list.append(transforms.Resize((image_size, image_size)))
     
-    # Normalization for Fashion MNIST
+    # Normalization for Fashion MNIST (dataset statistics: mean=0.2860, std=0.3530)
     transform_list.extend([
-        transforms.Normalize(mean=[0.5], std=[0.5])  # Normalize to [-1, 1]
+        transforms.Normalize(mean=[0.2860], std=[0.3530])
     ])
     
     return transforms.Compose(transform_list)

@@ -15,13 +15,13 @@ transfer_learning:
 
 # Training Configuration
 training:
-  epochs: 50
+  epochs: 75
   batch_size: 32
   learning_rate: 1e-3
   weight_decay: 1e-4
   optimizer: "adam" # adam, sgd
   scheduler: "cosine" # cosine, step, exponential, none
-  early_stopping_patience: 5
+  early_stopping_patience: 10
 
 # Data Configuration
 data:
@@ -38,31 +38,31 @@ augmentation:
   enabled: true
   strategy: "advanced" # basic, advanced, custom
 
-  # Geometric
-  rotation: 15              # RandomRotation degrees (±)
+  # Geometric (standard Fashion MNIST augmentations)
+  rotation: 10              # RandomRotation degrees (±) — mild
   horizontal_flip: true     # RandomHorizontalFlip
   vertical_flip: false      # RandomVerticalFlip (not useful for clothing)
-  random_crop: true         # RandomCrop with padding
-  random_crop_padding: 4    # Pixels of zero-padding before crop (28+4 → crop back to 28)
-  random_affine: true       # Slight translate + scale
-  zoom: 0.2                 # Scale range for random_affine (kept for back-compat)
+  random_crop: true         # RandomCrop with padding — standard for FMNIST
+  random_crop_padding: 4    # Pixels of zero-padding before crop
+  random_affine: false      # Disabled — too aggressive for 28x28
+  zoom: 0.1                 # (kept for reference, unused when random_affine: false)
 
-  # Color / intensity (grayscale-safe: saturation & hue kept at 0)
-  color_jitter: true
-  brightness: 0.3           # ±30% brightness variation
-  contrast: 0.3             # ±30% contrast variation
+  # Color / intensity — disabled: not effective for grayscale + causes divergence
+  color_jitter: false
+  brightness: 0.1
+  contrast: 0.1
 
-  # Noise & occlusion
-  random_erasing: true      # Hide random rectangular patches
-  random_erasing_prob: 0.3  # Probability of erasing per image
-  gaussian_noise: true      # Additive Gaussian noise
-  gaussian_noise_std: 0.04  # Noise std (pixel values in [0,1])
+  # Noise & occlusion — disabled: too aggressive when stacked with batch mixing
+  random_erasing: false
+  random_erasing_prob: 0.1
+  gaussian_noise: false
+  gaussian_noise_std: 0.02
 
-  # Batch-level mixing
+  # Batch-level mixing (these work well; keep both)
   cutmix: true
   cutmix_alpha: 1.0
   mixup: true
-  mixup_alpha: 0.2
+  mixup_alpha: 0.1  # Softer mixing → less label noise per batch
 
 # Ensemble Configuration
 ensemble:

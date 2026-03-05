@@ -11,6 +11,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # non-interactive backend — prevents plt.show() from blocking
 import matplotlib.pyplot as plt
 from typing import Optional, Tuple, List
 import logging
@@ -143,7 +145,7 @@ class GradCAM:
             plt.savefig(save_path, bbox_inches='tight', dpi=150)
             logger.info(f"Grad-CAM visualization saved: {save_path}")
         
-        plt.show()
+        plt.close()
 
 
 class AttentionMapper:
@@ -223,7 +225,7 @@ class AttentionMapper:
             plt.savefig(save_path, bbox_inches='tight', dpi=150)
             logger.info(f"Attention visualization saved: {save_path}")
         
-        plt.show()
+        plt.close()
 
 
 def get_layer_activations(model: nn.Module, input_tensor: torch.Tensor,
@@ -303,7 +305,7 @@ def visualize_filters(layer_weights: torch.Tensor, num_filters: int = 16,
         plt.savefig(save_path, bbox_inches='tight', dpi=150)
         logger.info(f"Filter visualization saved: {save_path}")
     
-    plt.show()
+    plt.close()
 
 
 if __name__ == "__main__":

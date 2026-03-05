@@ -52,6 +52,7 @@ logs/
 data/raw/*
 data/processed/*
 data/FashionMNIST/*
+*.gz
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
@@ -84,12 +85,14 @@ dist/
 *.egg-info/
 .eggs/
 
-# Testing
+# Testing (keep test scripts, ignore generated output files)
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
 coverage.xml
+tests/*.png
+tests/*.csv
 
 # Environment variables
 .env
