@@ -263,21 +263,61 @@ def train_model(
     
     if use_augmentation:
         aug_config = {}
-        
+
         if config.augmentation.mixup:
             aug_config['mixup'] = {'alpha': config.augmentation.mixup_alpha}
-        
+
         if config.augmentation.cutmix:
             aug_config['cutmix'] = {'alpha': config.augmentation.cutmix_alpha}
-        
-        # Add torchvision transforms
-        if config.augmentation.rotation > 0 or config.augmentation.horizontal_flip:
-            aug_config['torchvision'] = {
-                'rotation': config.augmentation.rotation,
-                'horizontal_flip': config.augmentation.horizontal_flip,
-                'vertical_flip': config.augmentation.vertical_flip
+
+        # --- Torchvision geometric + color transforms ---
+        tv_cfg = {}
+
+        if config.augmentation.rotation > 0:
+            tv_cfg['rotation'] = config.augmentation.rotation
+
+        if config.augmentation.horizontal_flip:
+            tv_cfg['horizontal_flip'] = True
+
+        if config.augmentation.vertical_flip:
+            tv_cfg['vertical_flip'] = True
+
+        if getattr(config.augmentation, 'random_crop', False):
+            tv_cfg['random_crop'] = {
+                'size': 28,
+                'padding': int(getattr(config.augmentation, 'random_crop_padding', 4))
             }
-        
+
+        if getattr(config.augmentation, 'random_affine', False):
+            zoom = float(getattr(config.augmentation, 'zoom', 0.1))
+            tv_cfg['random_affine'] = {
+                'degrees': 0,
+                'translate': (0.1, 0.1),
+                'scale': (1.0 - zoom / 2, 1.0 + zoom / 2)
+            }
+
+        if getattr(config.augmentation, 'color_jitter', False):
+            tv_cfg['color_jitter'] = {
+                'brightness': float(getattr(config.augmentation, 'brightness', 0.2)),
+                'contrast':   float(getattr(config.augmentation, 'contrast',   0.2)),
+                'saturation': 0.0,   # grayscale — no effect
+                'hue':        0.0,
+            }
+
+        if tv_cfg:
+            aug_config['torchvision'] = tv_cfg
+
+        # --- Sample-level noise / occlusion ---
+        if getattr(config.augmentation, 'random_erasing', False):
+            aug_config['random_erasing'] = {
+                'probability': float(getattr(config.augmentation, 'random_erasing_prob', 0.3))
+            }
+
+        if getattr(config.augmentation, 'gaussian_noise', False):
+            aug_config['gaussian_noise'] = {
+                'std': float(getattr(config.augmentation, 'gaussian_noise_std', 0.04))
+            }
+
         augmentation_pipeline = AugmentationPipeline(aug_config)
         logger.info(f"✅ Augmentation enabled: {list(aug_config.keys())}")
     
