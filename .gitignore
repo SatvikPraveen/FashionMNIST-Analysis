@@ -1,32 +1,100 @@
+# ============================================
+# FashionMNIST-Analysis .gitignore
+# ============================================
+
 # System files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
 # Python cache and compiled files
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
 
-# Virtual environment folder (updated to match your environment name)
+# Virtual environments
 envf/
 venv/
-.env/
+env/
+ENV/
+.venv/
+.env
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
+*.ipynb_checkpoints
 
-# Log files and environment configuration
-*.log
-*.env
-
-# Ignore the entire data folder
-data/
-
-# Data files (CSV files generated in data_preparation folder)
-data_preparation/
-
-# Ignore specific temporary or backup files
-*.bak
+# IDE and Editor files
+.vscode/
+.idea/
 *.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
 
-# Uncomment these lines if you want to ignore figures and processed CSV files
-# figures/
-# data_preparation/
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+logs/
+*.pid
+
+# Data directories (exclude raw/processed data but keep structure)
+data/raw/*
+data/processed/*
+data/FashionMNIST/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Model checkpoints and weights (large files)
+checkpoints/*.pth
+checkpoints/*.pt
+models/**/*.pth
+models/**/*.pt
+!models/best_model_weights/.gitkeep
+
+# Results and outputs
+results/**/*.json
+results/**/*.csv
+!results/.gitkeep
+
+# Figures (generated during training/evaluation)
+figures/**/*.png
+figures/**/*.jpg
+figures/**/*.pdf
+!figures/.gitkeep
+
+# MLOps tracking
+mlruns/
+wandb/
+.mlflow/
+
+# Build and distribution
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+coverage.xml
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Docker
+.dockerignore
