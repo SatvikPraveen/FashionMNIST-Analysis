@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import torch
 import logging
+import os
 from typing import List, Optional
 from pydantic import BaseModel
 import io
@@ -27,10 +28,21 @@ app = FastAPI(
 )
 
 # Add CORS middleware
+# Origins are configurable via the CORS_ORIGINS env var (comma-separated),
+# defaulting to the Streamlit/Gradio ports used in the Docker setup.
+# The API has no cookie/session-based auth, so credentialed CORS isn't needed;
+# allow_credentials stays False so a wildcard-free explicit origin list is sufficient.
+_default_cors_origins = "http://localhost:8501,http://localhost:7860"
+cors_origins = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ORIGINS", _default_cors_origins).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
