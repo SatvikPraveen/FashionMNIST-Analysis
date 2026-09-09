@@ -1,18 +1,18 @@
 # Core Libraries
-numpy
-pandas
-matplotlib
-seaborn
-scipy
+numpy>=1.24.0
+pandas>=2.0.0
+matplotlib>=3.5.0
+seaborn>=0.11.0
+scipy>=1.7.0
 pyyaml>=6.0
 
 # Machine Learning and Data Mining
-scikit-learn
+scikit-learn>=1.0.0
 
 # Deep Learning (PyTorch)
-torch
-torchvision
-pillow
+torch>=2.0.0
+torchvision>=0.15.0
+pillow>=9.0.0
 
 # Transfer Learning & SOTA Models
 timm>=0.9.0
@@ -23,23 +23,23 @@ grad-cam>=1.4.0
 shap>=0.42.0
 
 # Jupyter Notebooks for Analysis
-jupyter
-ipykernel
-notebook       # Ensures Jupyter Notebook functionality
-ipython        # Interactive Python shell
+jupyter>=1.0.0
+ipykernel>=6.0.0
+notebook>=6.4.0       # Ensures Jupyter Notebook functionality
+ipython>=8.0.0        # Interactive Python shell
 
 # Progress Bar
-tqdm
+tqdm>=4.60.0
 
 # Enhanced Visualization (Optional)
-plotly         # For interactive plots (Optional)
+plotly>=5.0.0         # For interactive plots (Optional)
 
 # Generating summary of the models
-torchinfo
+torchinfo>=1.7.0
 
 # Additional Dependencies for Dimensionality Reduction and XGBoost
-umap-learn
-xgboost
+umap-learn>=0.5.0
+xgboost>=1.6.0
 
 # Data Augmentation
 albumentations>=1.3.0
@@ -48,30 +48,17 @@ imgaug>=0.4.0
 # MLOps & Monitoring
 mlflow>=2.0.0
 wandb>=0.14.0
+prometheus-client>=0.17.0
 
 # Web Frameworks & APIs
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
-streamlit>=1.28.0
-gradio>=4.0.0
-python-multipart>=0.0.6
-
-# Web Applications
-gradio>=4.0.0
-streamlit>=1.28.0
-
-# API & Production
-fastapi>=0.100.0
-uvicorn>=0.23.0
 pydantic>=2.0.0
 python-multipart>=0.0.6
 
 # Dashboard & Visualization
 streamlit>=1.28.0
 gradio>=4.0.0
-
-# Monitoring & Metrics
-prometheus-client>=0.17.0
 
 # Testing
 pytest>=7.4.0
