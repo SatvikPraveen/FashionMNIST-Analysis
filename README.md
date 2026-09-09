@@ -1,5 +1,6 @@
 # # 🎨 **Fashion MNIST Analysis** 🧥👕👗👟
 
+![Tests](https://github.com/SatvikPraveen/FashionMNIST-Analysis/actions/workflows/tests.yml/badge.svg)
 ![MIT License](https://img.shields.io/github/license/SatvikPraveen/FashionMNIST-Analysis)
 ![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Repo Size](https://img.shields.io/github/repo-size/SatvikPraveen/FashionMNIST-Analysis)
