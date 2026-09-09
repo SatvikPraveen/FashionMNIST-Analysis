@@ -69,7 +69,8 @@ class TestTransferLearning:
         # Freeze all but last layer
         for param in model.parameters():
             param.requires_grad = False
-        model.classifier[0].requires_grad = True
+        for param in model.classifier.parameters():
+            param.requires_grad = True
         
         trainable_after = sum(p.numel() for p in model.parameters() if p.requires_grad)
         

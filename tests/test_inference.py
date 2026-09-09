@@ -82,7 +82,7 @@ class TestRealWorldInference:
         from src.serving.inference import RealWorldInference, ImagePreprocessor
         from src.models.architectures import MiniCNN
         
-        model = MiniCNN(in_channels=1, num_classes=10)
+        model = MiniCNN(in_channels=3, num_classes=10)
         preprocessor = ImagePreprocessor(target_size=28)
         
         inference = RealWorldInference(
@@ -107,7 +107,7 @@ class TestRealWorldInference:
         from src.serving.inference import RealWorldInference, ImagePreprocessor
         from src.models.architectures import MiniCNN
         
-        model = MiniCNN(in_channels=1, num_classes=10)
+        model = MiniCNN(in_channels=3, num_classes=10)
         preprocessor = ImagePreprocessor(target_size=28)
         
         inference = RealWorldInference(
@@ -136,7 +136,7 @@ class TestRealWorldInference:
         from src.serving.inference import RealWorldInference, ImagePreprocessor
         from src.models.architectures import MiniCNN
         
-        model = MiniCNN(in_channels=1, num_classes=10)
+        model = MiniCNN(in_channels=3, num_classes=10)
         preprocessor = ImagePreprocessor(target_size=28)
         
         inference = RealWorldInference(
@@ -164,7 +164,7 @@ class TestExplainability:
         """Test Grad-CAM initialization."""
         from src.evaluation.explainability import GradCAM
         from src.models.architectures import MiniCNN
-        
+
         model = MiniCNN(in_channels=1, num_classes=10)
         
         # GradCAM with conv layers
@@ -218,7 +218,7 @@ class TestEndToEndInference:
         from src.serving.inference import ImagePreprocessor, RealWorldInference
         
         # Create model
-        model = MiniCNN(in_channels=1, num_classes=10)
+        model = MiniCNN(in_channels=3, num_classes=10)
         model.eval()
         
         # Create preprocessor

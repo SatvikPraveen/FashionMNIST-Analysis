@@ -82,9 +82,9 @@ class EnsembleVoting:
                 logits = model(x)
                 proba = torch.softmax(logits, dim=1)
                 probas.append(proba.cpu().numpy() * weight)
-        
-        # Average probabilities
-        ensemble_proba = np.mean(probas, axis=0)
+
+        # Weighted sum of probabilities (weights already normalized to sum to 1)
+        ensemble_proba = np.sum(probas, axis=0)
         return ensemble_proba
     
     def _hard_voting(self, x: torch.Tensor) -> np.ndarray:
