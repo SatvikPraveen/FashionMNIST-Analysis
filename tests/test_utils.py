@@ -5,7 +5,7 @@ Unit tests for utility functions.
 import pytest
 import torch
 import numpy as np
-from src.training.utils import train_step, validation_step, test_step
+from src.training.utils import train_step, validation_step, test_step as run_test_step
 
 
 class TestUtilFunctions:
@@ -71,7 +71,7 @@ class TestUtilFunctions:
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=4)
         
         # Test step
-        loss, acc = test_step(model, dataloader, loss_fn, device)
+        loss, acc = run_test_step(model, dataloader, loss_fn, device)
         
         assert isinstance(loss, float)
         assert isinstance(acc, float)
