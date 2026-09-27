@@ -50,6 +50,13 @@ augmentation:
   enabled: true
   strategy: "advanced" # basic, advanced, custom
 
+  # Per-sample geometric augmentation. Before 2026-09-27 these transforms were
+  # applied once per *batch* (every image shared one crop / flip / angle) and
+  # padded with 0.0, which after normalisation is mid-grey. Both are fixed;
+  # set legacy_batch_mode: true (and fill: 0.0) only to reproduce old runs.
+  fill: "background"        # "background" = normalised black (-0.810), or a number
+  legacy_batch_mode: false
+
   # Geometric (standard Fashion MNIST augmentations)
   rotation: 10              # RandomRotation degrees (±) — mild
   horizontal_flip: true     # RandomHorizontalFlip

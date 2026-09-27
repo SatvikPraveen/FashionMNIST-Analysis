@@ -32,7 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.config.settings import load_config
 from src.data.dataset import create_dataloaders, get_default_transforms
-from src.data.augmentation import AugmentationPipeline, Mixup, CutMix
+from src.data.augmentation import AugmentationPipeline, Mixup, CutMix, FMNIST_BACKGROUND
 from src.models.architectures import MiniCNN, TinyVGG, ResNet, BasicBlock
 from src.models.registry import (
     build_from_spec, model_spec_from_config, resolve_name, spec_path_for, CUSTOM_MODELS
@@ -296,6 +296,11 @@ def build_augmentation_pipeline(config) -> Optional[AugmentationPipeline]:
             }
 
         if tv_cfg:
+            # Pixels exposed by padding / rotation must look like the black
+            # background, i.e. its *normalised* value, not 0 (= mid-grey).
+            fill = config.get('augmentation.fill', 'background')
+            tv_cfg['fill'] = FMNIST_BACKGROUND if fill == 'background' else float(fill)
+            tv_cfg['legacy_batch_mode'] = bool(config.get('augmentation.legacy_batch_mode', False))
             aug_config['torchvision'] = tv_cfg
 
         # --- Sample-level noise / occlusion ---

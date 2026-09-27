@@ -8,7 +8,9 @@ Provides advanced augmentation techniques including:
 - CutMix
 """
 
+import math
 import torch
+import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
 from typing import Tuple, Optional, Callable
@@ -298,95 +300,148 @@ class GaussianBlur:
             return x
 
 
+# Normalised value of a black (0.0) pixel under the Fashion-MNIST statistics
+# used by the data pipeline: (0 - 0.2860) / 0.3530.
+FMNIST_BACKGROUND = (0.0 - 0.2860) / 0.3530
+
+
 class TorchvisionTransforms:
     """
-    Wrapper for torchvision transforms to use in data pipeline.
-    
-    Provides common augmentations: rotation, flipping, color jitter, etc.
+    Per-sample geometric / photometric augmentation for normalised batches.
+
+    Config keys (all optional):
+        rotation (float):        max |angle| in degrees, sampled per image
+        horizontal_flip (bool):  flip each image with p = 0.5
+        vertical_flip (bool):    flip each image with p = 0.5
+        color_jitter (dict):     brightness / contrast (per image, looped)
+        random_crop (dict):      {'size': 28, 'padding': 4}, offset per image
+        random_affine (dict):    torchvision RandomAffine kwargs (per image, looped)
+        fill (float):            value for pixels exposed by crop padding /
+                                 rotation / affine. For normalised Fashion-MNIST
+                                 the true black background is FMNIST_BACKGROUND
+                                 (-0.810); the old default 0.0 is mid-grey.
+        legacy_batch_mode (bool): reproduce the pre-2026-09-27 behaviour,
+                                 where torchvision transforms were called once
+                                 on the whole (N, C, H, W) batch, so every image
+                                 in a batch shared one crop offset, one flip
+                                 decision and one angle. Kept only so the
+                                 effect of that bug can be measured.
+
+    Order matches the original Compose: rotation, h-flip, v-flip, colour
+    jitter, crop, affine.
     """
-    
+
     def __init__(self, config: dict = None):
-        """
-        Initialize torchvision transforms.
-        
-        Args:
-            config (dict): Transform configuration
-                Example:
-                {
-                    'rotation': 15,
-                    'horizontal_flip': True,
-                    'vertical_flip': False,
-                    'color_jitter': {'brightness': 0.2, 'contrast': 0.2},
-                    'random_crop': {'size': 28, 'padding': 4}
-                }
-        """
         from torchvision import transforms
-        
-        if config is None:
-            config = {}
-        
-        transform_list = []
-        
-        # Random rotation
-        if 'rotation' in config and config['rotation'] > 0:
-            transform_list.append(
-                transforms.RandomRotation(degrees=config['rotation'])
-            )
-            logger.info(f"Added RandomRotation: {config['rotation']} degrees")
-        
-        # Horizontal flip
-        if config.get('horizontal_flip', False):
-            transform_list.append(transforms.RandomHorizontalFlip(p=0.5))
-            logger.info("Added RandomHorizontalFlip")
-        
-        # Vertical flip
-        if config.get('vertical_flip', False):
-            transform_list.append(transforms.RandomVerticalFlip(p=0.5))
-            logger.info("Added RandomVerticalFlip")
-        
-        # Color jitter
+
+        config = dict(config or {})
+        self.fill = float(config.get('fill', 0.0))
+        self.legacy_batch_mode = bool(config.get('legacy_batch_mode', False))
+        self.rotation = float(config.get('rotation', 0) or 0)
+        self.hflip = bool(config.get('horizontal_flip', False))
+        self.vflip = bool(config.get('vertical_flip', False))
+        rc = config.get('random_crop')
+        self.crop_size = int(rc['size']) if rc else None
+        self.crop_padding = int(rc.get('padding', 0)) if rc else 0
+        self.color_jitter = None
         if 'color_jitter' in config:
             cj = config['color_jitter']
-            transform_list.append(
-                transforms.ColorJitter(
-                    brightness=cj.get('brightness', 0),
-                    contrast=cj.get('contrast', 0),
-                    saturation=cj.get('saturation', 0),
-                    hue=cj.get('hue', 0)
-                )
-            )
-            logger.info("Added ColorJitter")
-        
-        # Random crop
-        if 'random_crop' in config:
-            rc = config['random_crop']
-            transform_list.append(
-                transforms.RandomCrop(
-                    size=rc['size'],
-                    padding=rc.get('padding', 0)
-                )
-            )
-            logger.info(f"Added RandomCrop: {rc['size']}x{rc['size']}")
-        
-        # Random affine
+            self.color_jitter = transforms.ColorJitter(
+                brightness=cj.get('brightness', 0), contrast=cj.get('contrast', 0),
+                saturation=cj.get('saturation', 0), hue=cj.get('hue', 0))
+        self.affine = None
         if 'random_affine' in config:
             ra = config['random_affine']
-            transform_list.append(
-                transforms.RandomAffine(
-                    degrees=ra.get('degrees', 0),
-                    translate=ra.get('translate', None),
-                    scale=ra.get('scale', None)
-                )
-            )
-            logger.info("Added RandomAffine")
-        
-        self.transform = transforms.Compose(transform_list) if transform_list else None
-    
+            self.affine = transforms.RandomAffine(
+                degrees=ra.get('degrees', 0), translate=ra.get('translate', None),
+                scale=ra.get('scale', None), fill=self.fill)
+
+        # Legacy path: exactly the old Compose (fill 0, one draw per call)
+        self.transform = None
+        if self.legacy_batch_mode:
+            tl = []
+            if self.rotation > 0:
+                tl.append(transforms.RandomRotation(degrees=self.rotation))
+            if self.hflip:
+                tl.append(transforms.RandomHorizontalFlip(p=0.5))
+            if self.vflip:
+                tl.append(transforms.RandomVerticalFlip(p=0.5))
+            if self.color_jitter is not None:
+                tl.append(self.color_jitter)
+            if rc:
+                tl.append(transforms.RandomCrop(size=self.crop_size, padding=self.crop_padding))
+            if self.affine is not None:
+                tl.append(transforms.RandomAffine(
+                    degrees=config['random_affine'].get('degrees', 0),
+                    translate=config['random_affine'].get('translate', None),
+                    scale=config['random_affine'].get('scale', None)))
+            self.transform = transforms.Compose(tl) if tl else None
+            logger.warning("TorchvisionTransforms in legacy_batch_mode: one random draw per batch, fill 0")
+
+        enabled = [n for n, on in (("rotation", self.rotation > 0), ("hflip", self.hflip),
+                                   ("vflip", self.vflip), ("color_jitter", self.color_jitter is not None),
+                                   ("random_crop", self.crop_size is not None),
+                                   ("random_affine", self.affine is not None)) if on]
+        if enabled:
+            logger.info(f"Per-sample transforms: {enabled} (fill={self.fill:.3f}, "
+                        f"legacy_batch_mode={self.legacy_batch_mode})")
+
+    # ------------------------------------------------------------------ #
+    def _rotate(self, x: torch.Tensor) -> torch.Tensor:
+        n = x.shape[0]
+        ang = (torch.rand(n, device=x.device) * 2 - 1) * math.radians(self.rotation)
+        cos, sin = torch.cos(ang), torch.sin(ang)
+        zero = torch.zeros_like(ang)
+        theta = torch.stack([torch.stack([cos, -sin, zero], 1),
+                             torch.stack([sin, cos, zero], 1)], 1).to(x.dtype)
+        grid = F.affine_grid(theta, list(x.shape), align_corners=False)
+        # grid_sample pads with 0, so shift the fill value to 0 and back.
+        # 'nearest' matches torchvision RandomRotation's default interpolation.
+        out = F.grid_sample(x - self.fill, grid, mode="nearest", padding_mode="zeros",
+                            align_corners=False)
+        return out + self.fill
+
+    @staticmethod
+    def _flip(x: torch.Tensor, dim: int) -> torch.Tensor:
+        mask = torch.rand(x.shape[0], device=x.device) < 0.5
+        return torch.where(mask[:, None, None, None], x.flip(dim), x)
+
+    def _crop(self, x: torch.Tensor) -> torch.Tensor:
+        n, c, h, w = x.shape
+        p, s = self.crop_padding, self.crop_size
+        xp = F.pad(x, (p, p, p, p), mode="constant", value=self.fill) if p else x
+        H, W = xp.shape[-2:]
+        oy = torch.randint(0, H - s + 1, (n,), device=x.device)
+        ox = torch.randint(0, W - s + 1, (n,), device=x.device)
+        ar = torch.arange(s, device=x.device)
+        rows = (oy[:, None] + ar)[:, None, :, None].expand(n, c, s, W)
+        cols = (ox[:, None] + ar)[:, None, None, :].expand(n, c, s, s)
+        out = torch.gather(xp, 2, rows)          # (n, c, s, W): chosen rows
+        return torch.gather(out, 3, cols)        # (n, c, s, s): chosen columns
+
+    def _per_image(self, x: torch.Tensor, t) -> torch.Tensor:
+        return torch.stack([t(img) for img in x])
+
     def __call__(self, x: torch.Tensor) -> torch.Tensor:
-        """Apply transforms."""
-        if self.transform is not None:
-            return self.transform(x)
-        return x
+        """Apply transforms; 4-D batches get an independent draw per image."""
+        if self.legacy_batch_mode:
+            return self.transform(x) if self.transform is not None else x
+        squeeze = x.dim() == 3
+        if squeeze:
+            x = x.unsqueeze(0)
+        if self.rotation > 0:
+            x = self._rotate(x)
+        if self.hflip:
+            x = self._flip(x, -1)
+        if self.vflip:
+            x = self._flip(x, -2)
+        if self.color_jitter is not None:
+            x = self._per_image(x, self.color_jitter)
+        if self.crop_size is not None:
+            x = self._crop(x)
+        if self.affine is not None:
+            x = self._per_image(x, self.affine)
+        return x.squeeze(0) if squeeze else x
 
 
 class AlbumentationsTransforms:
