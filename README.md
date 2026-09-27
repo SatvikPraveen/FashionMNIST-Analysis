@@ -257,6 +257,27 @@ average vs a 75-epoch cap), so part of the crop penalty may be an
 under-training effect of the fixed budget. `sweeps/crop_confirmation.yaml`
 tests this on all three models with fresh seeds and a longer budget.
 
+### Learning rate × weight decay (TinyVGG, 3 seeds per cell, 2026-09-27)
+
+Adam, cosine schedule, full augmentation recipe. Paired by seed against the
+`config.yaml` default (LR 1e-3, WD 1e-4). Raw data:
+[runs](results/sweeps/lr_grid_runs.csv), [paired table](results/sweeps/lr_grid_paired.md).
+
+| LR | WD | Test acc (mean ± std) | Δ vs default (paired) | p | Seeds better |
+|---|---|---|---|---|---|
+| 3e-4 | 1e-4 | 0.9268 ± 0.0015 | +0.0006 | 0.424 | 2 / 3 |
+| **1e-3** | **1e-4** | **0.9262 ± 0.0021** | — | — | — |
+| 3e-4 | 5e-4 | 0.9208 ± 0.0030 | −0.0054 | 0.113 | 0 / 3 |
+| 1e-3 | 5e-4 | 0.9185 ± 0.0051 | −0.0077 | 0.190 | 0 / 3 |
+| 3e-3 | 5e-4 | 0.8936 ± 0.0106 | −0.0327 | 0.047 | 0 / 3 |
+| 3e-3 | 1e-4 | 0.8889 ± 0.0161 | −0.0373 | 0.067 | 0 / 3 |
+
+**Finding.** The default is already at the optimum: LR 1e-3 and 3e-4 are
+indistinguishable, LR 3e-3 costs 3–4 points and is also far less stable
+across seeds, and the heavier weight decay loses on every seed at every LR
+(not significant at n = 3). Tuning LR/WD is therefore not where the
+remaining accuracy is.
+
 ---
 
 ## Updates (2026)
