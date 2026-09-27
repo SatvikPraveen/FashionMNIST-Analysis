@@ -5,6 +5,8 @@
 ![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Repo Size](https://img.shields.io/github/repo-size/SatvikPraveen/FashionMNIST-Analysis)
 
+**Project website: [satvikpraveen.github.io/FashionMNIST-Analysis](https://satvikpraveen.github.io/FashionMNIST-Analysis/)**
+
 A reproducible empirical study of image classification on Fashion-MNIST:
 what a modern training recipe, pretrained backbones and seed ensembles
 actually buy on a small grayscale benchmark, and what they cost in
@@ -77,7 +79,7 @@ python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt          # or cluster/requirements-cluster.txt for training only
 
 python src/cli/prepare_data.py --output-dir data/processed   # download + seeded CSV splits
-pytest tests/ -q                         # 126 tests
+pytest tests/ -q                         # 132 tests
 ```
 
 Train and evaluate:
@@ -419,7 +421,8 @@ FashionMNIST-Analysis/
 │   ├── monitoring/          # metrics and drift tracking
 │   └── config/              # config loading
 ├── cluster/                 # generic SLURM job templates, dataset/weight prefetch
-├── tests/                   # 126 pytest tests, run in CI on Python 3.10 and 3.11
+├── site/                    # generator for the project website (built from results/sweeps/)
+├── tests/                   # 132 pytest tests, run in CI on Python 3.10 and 3.11
 ├── notebooks/, eda/         # original exploratory and modelling notebooks
 ├── figures/                 # EDA, classical-ML and evaluation plots
 ├── models/                  # original single-seed checkpoints
@@ -472,6 +475,11 @@ The original exploratory workflow, kept for reference:
   robustness.
 - Re-run the classical baselines with seeds for a like-for-like comparison.
 - Add Grad-CAM output to the batch analysis.
+
+## Citation
+
+If you use this code or these results, please cite the repository; GitHub's
+"Cite this repository" button reads [`CITATION.cff`](CITATION.cff).
 
 ## Acknowledgments
 

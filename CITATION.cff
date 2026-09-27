@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this code or these results, please cite them as below."
+title: "Fashion-MNIST Analysis: a reproducible multi-seed study of pretraining, augmentation, ensembles, calibration and robustness"
+type: software
+authors:
+  - family-names: Praveen
+    given-names: Satvik
+repository-code: "https://github.com/SatvikPraveen/FashionMNIST-Analysis"
+url: "https://satvikpraveen.github.io/FashionMNIST-Analysis/"
+license: MIT
+date-released: "2026-09-27"
+keywords:
+  - fashion-mnist
+  - image-classification
+  - pytorch
+  - reproducibility
+  - data-augmentation
+  - model-calibration
+  - robustness
+  - deep-ensembles
+  - vision-transformer
