@@ -450,6 +450,10 @@ def train_model(
         # fast-forwarded, rather than restored: restoring would keep the old
         # horizon (e.g. cosine T_max), which drives the LR to 0 if the run
         # is resumed with a larger --epochs.
+        # Schedulers derive step 0 from the optimizer's *current* lr, so put
+        # it back to the initial value before rebuilding and fast-forwarding.
+        for g in optimizer.param_groups:
+            g["lr"] = g.get("initial_lr", learning_rate)
         scheduler = build_scheduler(optimizer, config, epochs)
         for _ in range(state["epoch"] + 1):
             if scheduler is not None:
