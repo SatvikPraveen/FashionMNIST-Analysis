@@ -22,6 +22,8 @@ training:
   optimizer: "adam" # adam, sgd
   scheduler: "cosine" # cosine, step, exponential, none
   early_stopping_patience: 10
+  seed: 42                # Global seed (model init, shuffling, split, augmentation)
+  deterministic: false    # Force deterministic kernels (slower; bit-exact repro)
 
 # Data Configuration
 data:
@@ -30,6 +32,7 @@ data:
   val_split: 0.1
   test_split: 0.1
   normalize: true
+  num_workers: 0  # DataLoader workers; raise to 4-8 on a cluster node
   image_size: 224 # For transfer learning models
   grayscale_to_rgb: true # Convert 1-channel to 3-channel for pretrained models
 

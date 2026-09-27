@@ -72,14 +72,15 @@ def evaluate_model_with_confusion_matrix(model, dataloader, device):
             X, y = X.to(device), y.to(device)
             y_logits = model(X)
             loss = loss_fn(y_logits, y)
-            total_loss += loss.item()
+            total_loss += loss.item() * y.size(0)
             y_pred = torch.argmax(torch.softmax(y_logits, dim=1), dim=1)
             total_correct += (y_pred == y).sum().item()
             all_preds.extend(y_pred.cpu().numpy())
             all_labels.extend(y.cpu().numpy())
 
-    avg_loss = total_loss / len(dataloader)
-    accuracy = total_correct / len(dataloader.dataset)
+    n = len(all_labels)
+    avg_loss = total_loss / n if n else 0.0
+    accuracy = total_correct / n if n else 0.0
     return avg_loss, accuracy, np.array(all_preds), np.array(all_labels)
 
 # Visualize predictions

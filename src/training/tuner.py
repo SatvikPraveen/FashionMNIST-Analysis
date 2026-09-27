@@ -21,6 +21,7 @@ from src.config.settings import load_config, Config
 from src.data.dataset import create_dataloaders
 from src.models.architectures import MiniCNN, TinyVGG, ResNet, BasicBlock
 from src.training.utils import get_device, print_device_info
+from src.training.reproducibility import set_seed
 from .trainer import train_model, get_model
 
 logging.basicConfig(
@@ -89,7 +90,8 @@ def finetune_model(
             new_train_loader, new_val_loader, new_test_loader = create_dataloaders(
                 use_torchvision=True,
                 batch_size=bs,
-                num_workers=0
+                num_workers=int(config.get('data.num_workers', 0)),
+                seed=config.get('training.seed', None)
             )
         else:
             new_train_loader = train_loader
@@ -209,12 +211,23 @@ def main():
         action="store_true",
         help="Force CPU usage"
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Random seed (overrides training.seed in config; default 42)"
+    )
     
     args = parser.parse_args()
     
     # Load config
     logger.info("Loading configuration...")
     config = load_config(args.config)
+
+    seed = args.seed if args.seed is not None else int(config.get('training.seed', 42))
+    config.set('training.seed', seed)
+    set_seed(seed, deterministic=bool(config.get('training.deterministic', False)))
+    num_workers = int(config.get('data.num_workers', 0))
     
     # Get device
     device = print_device_info() if not args.force_cpu else get_device(force_cpu=True)
@@ -227,7 +240,8 @@ def main():
     train_loader, val_loader, test_loader = create_dataloaders(
         use_torchvision=True,
         batch_size=args.batch_sizes[0],  # Use first batch size initially
-        num_workers=0
+        num_workers=num_workers,
+        seed=seed
     )
     
     # Perform fine-tuning

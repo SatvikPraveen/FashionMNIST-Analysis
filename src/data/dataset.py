@@ -13,6 +13,8 @@ from torchvision import datasets, transforms
 from pathlib import Path
 import logging
 
+from src.training.reproducibility import seed_worker, make_generator
+
 logger = logging.getLogger(__name__)
 
 
@@ -163,7 +165,9 @@ def create_dataloaders(
     train_transform: Optional[Callable] = None,
     val_transform: Optional[Callable] = None,
     use_torchvision: bool = False,
-    data_root: str = "./data"
+    data_root: str = "./data",
+    seed: Optional[int] = None,
+    val_fraction: float = 0.2
 ) -> Tuple[Optional[DataLoader], Optional[DataLoader], Optional[DataLoader]]:
     """
     Create train, validation, and test dataloaders.
@@ -178,6 +182,10 @@ def create_dataloaders(
         val_transform (callable): Transform for val/test data
         use_torchvision (bool): Use torchvision dataset instead of CSV
         data_root (str): Root directory for torchvision data
+        seed (int): Seed for the train/val split and shuffling order. When
+            None the split and order follow the global torch RNG.
+        val_fraction (float): Fraction of the official training set held
+            out for validation when ``use_torchvision`` is True.
         
     Returns:
         Tuple of (train_loader, val_loader, test_loader)
@@ -205,11 +213,12 @@ def create_dataloaders(
             transform=val_transform
         )
         
-        # Split train into train/val
-        train_size = int(0.8 * len(train_dataset))
+        # Split train into train/val (seeded so every run uses the same split)
+        train_size = int((1.0 - val_fraction) * len(train_dataset))
         val_size = len(train_dataset) - train_size
+        split_kwargs = {"generator": make_generator(seed)} if seed is not None else {}
         train_dataset, val_dataset = torch.utils.data.random_split(
-            train_dataset, [train_size, val_size]
+            train_dataset, [train_size, val_size], **split_kwargs
         )
         
     else:
@@ -230,13 +239,16 @@ def create_dataloaders(
             test_dataset = None
     
     # Create dataloaders
+    loader_kwargs = dict(num_workers=num_workers, pin_memory=True,
+                         worker_init_fn=seed_worker if num_workers > 0 else None,
+                         persistent_workers=num_workers > 0)
     if train_dataset:
         train_loader = DataLoader(
             train_dataset,
             batch_size=batch_size,
             shuffle=True,
-            num_workers=num_workers,
-            pin_memory=True
+            generator=make_generator(seed),
+            **loader_kwargs
         )
         logger.info(f"Train loader created: {len(train_loader)} batches")
     
@@ -245,8 +257,7 @@ def create_dataloaders(
             val_dataset,
             batch_size=batch_size,
             shuffle=False,
-            num_workers=num_workers,
-            pin_memory=True
+            **loader_kwargs
         )
         logger.info(f"Validation loader created: {len(val_loader)} batches")
     
@@ -255,8 +266,7 @@ def create_dataloaders(
             test_dataset,
             batch_size=batch_size,
             shuffle=False,
-            num_workers=num_workers,
-            pin_memory=True
+            **loader_kwargs
         )
         logger.info(f"Test loader created: {len(test_loader)} batches")
     

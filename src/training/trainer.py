@@ -32,6 +32,7 @@ from src.config.settings import load_config
 from src.data.dataset import create_dataloaders, get_default_transforms
 from src.data.augmentation import AugmentationPipeline, Mixup, CutMix
 from src.models.architectures import MiniCNN, TinyVGG, ResNet, BasicBlock
+from src.training.reproducibility import set_seed
 from src.training.utils import (
     get_device,
     print_device_info,
@@ -149,7 +150,7 @@ def train_epoch_with_augmentation(
         Tuple of (train_loss, train_acc)
     """
     model.train()
-    train_loss, train_acc = 0, 0
+    total_loss, total_correct, total_samples = 0.0, 0, 0
     
     for batch_idx, (X, y) in enumerate(dataloader):
         X, y = X.to(device), y.to(device)
@@ -180,21 +181,21 @@ def train_epoch_with_augmentation(
             y_pred = model(X)
             loss = loss_fn(y_pred, y)
         
-        train_loss += loss.item()
-        
         # Backward pass
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         
-        # Calculate accuracy
-        y_pred_class = torch.argmax(torch.softmax(y_pred, dim=1), dim=1)
-        train_acc += (y_pred_class == y).sum().item() / len(y_pred)
+        # Sample-weighted accumulation (accuracy is measured against the
+        # un-mixed labels, which is the usual convention under Mixup/CutMix)
+        n = y.size(0)
+        total_loss += loss.item() * n
+        total_correct += (y_pred.argmax(dim=1) == y).sum().item()
+        total_samples += n
     
-    train_loss /= len(dataloader)
-    train_acc /= len(dataloader)
-    
-    return train_loss, train_acc
+    if total_samples == 0:
+        return 0.0, 0.0
+    return total_loss / total_samples, total_correct / total_samples
 
 
 def train_model(
@@ -330,6 +331,8 @@ def train_model(
 
     # Training history
     history = {
+        'model_name': model_name,
+        'seed': config.get('training.seed', None),
         'train_loss': [],
         'train_acc': [],
         'val_loss': [],
@@ -454,12 +457,37 @@ def main():
         action="store_true",
         help="Force CPU usage"
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Random seed (overrides training.seed in config; default 42)"
+    )
+    parser.add_argument(
+        "--deterministic",
+        action="store_true",
+        help="Force deterministic algorithms (slower; for bit-exact reproduction)"
+    )
+    parser.add_argument(
+        "--num-workers",
+        type=int,
+        default=None,
+        help="DataLoader worker processes (overrides data.num_workers in config)"
+    )
     
     args = parser.parse_args()
     
     # Load config
     logger.info("Loading configuration...")
     config = load_config(args.config)
+
+    # Seed everything before any model / data code runs
+    seed = args.seed if args.seed is not None else int(config.get('training.seed', 42))
+    config.set('training.seed', seed)
+    deterministic = args.deterministic or bool(config.get('training.deterministic', False))
+    set_seed(seed, deterministic=deterministic)
+
+    num_workers = args.num_workers if args.num_workers is not None else int(config.get('data.num_workers', 0))
     
     # Get device
     device = print_device_info() if not args.force_cpu else get_device(force_cpu=True)
@@ -476,14 +504,16 @@ def main():
             val_csv=args.val_csv,
             test_csv=args.test_csv,
             batch_size=config.training.batch_size,
-            num_workers=0
+            num_workers=num_workers,
+            seed=seed
         )
     else:
         logger.info("   Using torchvision FashionMNIST dataset")
         train_loader, val_loader, test_loader = create_dataloaders(
             use_torchvision=True,
             batch_size=config.training.batch_size,
-            num_workers=0
+            num_workers=num_workers,
+            seed=seed
         )
     
     logger.info(f"✅ Datasets loaded:")
@@ -555,6 +585,7 @@ def main():
 
     best_info = {
         "model_name":   best_name,
+        "seed":         seed,
         "best_val_acc": best_val_acc,
         "test_acc":     best_test_acc,
         "source_path":  best_src_path,
