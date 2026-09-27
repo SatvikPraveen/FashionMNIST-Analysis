@@ -26,9 +26,10 @@ per-epoch curves, and every table links to the raw per-run data in
 | Pretrained ConvNeXt-Tiny | 0.9506 ± 0.0012 | 27.8M | 3 seeds¹ |
 | 5-seed ensemble of TinyVGG, no random crop | 0.9421 | 5 × 0.14M | best result without pretraining |
 | ResNet-18 (custom, from scratch) | 0.9412 ± 0.0018 | 11.2M | best single model without pretraining |
-| TinyVGG, no random crop | 0.9362 ± 0.0036 | 0.14M | best recipe for the small CNN |
+| TinyVGG, no random crop | 0.9362 ± 0.0036 | 0.14M | best recipe for the small CNNs |
+| MiniCNN, no random crop | 0.9236 ± 0.0056 | 0.11M | |
 | TinyVGG, default recipe | 0.9273 ± 0.0035 | 0.14M | |
-| MiniCNN | 0.9090 ± 0.0042 | 0.11M | |
+| MiniCNN, default recipe | 0.9090 ± 0.0042 | 0.11M | |
 | Best classical model (kNN on PCA features) | 0.8576 | – | single run, from the notebooks |
 
 ¹ Measured before the augmentation fix described in
@@ -44,10 +45,12 @@ pipeline is in progress. All other rows use the fixed pipeline.
 2. **Among from-scratch models, ResNet-18 is clearly best** (0.9412), ahead
    of TinyVGG with non-overlapping confidence intervals. The original
    single-seed claim that TinyVGG was best does not hold.
-3. **Geometric augmentation hurts the small CNN on this dataset.** Removing
-   the padded random crop gains +1.0 points, and removing rotation gains
-   +0.6. Fashion-MNIST items are already centred and size-normalised, which
-   is a plausible reason.
+3. **Whether random cropping helps depends on model capacity.** Removing
+   the padded random crop gains +1.5 points for MiniCNN and +1.0 for TinyVGG
+   (both about 0.1M parameters) but costs ResNet-18 (11M) 0.5 points, on
+   every seed. Removing rotation also helps TinyVGG (+0.6). Fashion-MNIST
+   items are centred and size-normalised, so shifts mostly add noise for a
+   small model, while a large one benefits from the regularisation.
 4. **Seed ensembles add 0.6 to 1.8 points, but can harm calibration.**
    Averaging makes calibration worse when members were trained with
    Mixup/CutMix and better when they were not, reproducing
@@ -128,7 +131,8 @@ research questions and protocol.
 | `backbones` | Does ImageNet pretraining help, and for which families? | 24 |
 | `lr_grid` | Is the default learning rate / weight decay near-optimal? | 18 |
 | `crop_confirmation` | Does the crop penalty survive fresh seeds and a longer budget? | 25 |
-| `crop_generalization`, `backbones_fixed` | Crop on the other CNNs; best backbones on the fixed pipeline | 22 (running) |
+| `crop_generalization` | Does the crop effect hold for MiniCNN and ResNet? | 10 |
+| `backbones_fixed` | The best pretrained backbones on the fixed pipeline | 12 (running) |
 | `baseline_seeds`, `augmentation_ablation` | The same questions on the pre-fix pipeline, kept for the record | 45 |
 
 ---
@@ -178,12 +182,28 @@ seed against the full recipe
 Removing the crop or the rotation helps, flip and Mixup/CutMix have no
 detectable effect, and augmentation as a whole is worth about 0.9 points.
 
-The crop penalty is robust. On the pre-fix pipeline it was significant on
-the same seeds (+0.95 points, p = 0.018, 5/5 seeds), and it replicated on
-fresh seeds 5–9 with a doubled 150-epoch budget: +2.42 points for MiniCNN
-(p < 0.001) and +1.32 for TinyVGG (p = 0.005), every seed better
-([summary](results/sweeps/crop_confirmation_summary.md)). All those runs
-early-stopped between 30 and 90 epochs, so under-training is ruled out.
+For the small CNNs the crop penalty is robust. On the pre-fix pipeline it
+was significant on the same seeds (+0.95 points, p = 0.018, 5/5 seeds), and
+it replicated on fresh seeds 5–9 with a doubled 150-epoch budget: +2.42
+points for MiniCNN (p < 0.001) and +1.32 for TinyVGG (p = 0.005), every seed
+better ([summary](results/sweeps/crop_confirmation_summary.md)). All those
+runs early-stopped between 30 and 90 epochs, so under-training is ruled out.
+
+It does **not** generalise to the larger model. On the fixed pipeline,
+paired against the default recipe on seeds 0–4
+([MiniCNN](results/sweeps/crop_generalization_vs_minicnn_paired.md),
+[ResNet](results/sweeps/crop_generalization_vs_resnet_paired.md),
+[runs](results/sweeps/crop_generalization_runs.csv)):
+
+| Model | Params | With crop | Without crop | Δ from removing crop | 95% CI of Δ | p | Seeds better |
+|---|---|---|---|---|---|---|---|
+| MiniCNN | 0.11M | 0.9090 ± 0.0042 | **0.9236 ± 0.0056** | +0.0146 | [+0.0095, +0.0197] | 0.001 | 5 / 5 |
+| TinyVGG | 0.14M | 0.9262 ± 0.0060 | **0.9362 ± 0.0036** | +0.0100 | [−0.0004, +0.0204] | 0.055 | 4 / 5 |
+| ResNet-18 (custom) | 11.17M | **0.9412 ± 0.0018** | 0.9361 ± 0.0043 | −0.0050 | [−0.0092, −0.0008] | 0.029 | 0 / 5 |
+
+The effect reverses with capacity: cropping costs the two small CNNs
+accuracy but is worth 0.5 points to ResNet, which is large enough to use it
+as regularisation.
 
 ### Pretrained backbones versus training from scratch
 
@@ -427,8 +447,10 @@ The original exploratory workflow, kept for reference:
 
 ## Future work
 
-- Finish the running re-runs: the crop effect on MiniCNN and ResNet, and the
-  best pretrained backbones on the fixed pipeline.
+- Finish the running re-run of the best pretrained backbones on the fixed
+  pipeline.
+- Map where the crop effect flips sign, for example with ResNets of
+  intermediate width.
 - Test whether batch normalisation explains ResNet's contrast and brightness
   robustness.
 - Re-run the classical baselines with seeds for a like-for-like comparison.

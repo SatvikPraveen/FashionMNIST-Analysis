@@ -1,0 +1,3 @@
+group,model,variant,n,test_acc_mean,test_acc_std,test_acc_ci95,test_acc_min,test_acc_max,seeds,mean_train_time_sec,num_parameters
+resnet|no_crop,resnet,no_crop,5,0.9361200000000001,0.004263449307778819,0.005292922843798076,0.9291,0.94,"[0, 1, 2, 3, 4]",999.0166872024536,11172810
+minicnn|no_crop,minicnn,no_crop,5,0.9235599999999999,0.00558641208648273,0.006935334751949648,0.9168,0.9292,"[0, 1, 2, 3, 4]",187.40202269554138,105866
