@@ -1,5 +1,5 @@
 # Augmentation ablation re-run on the FIXED pipeline (per-sample draws,
-# black background fill; see commit a341854), with the old buggy pipeline
+# black background fill; see commit 85459dd), with the old buggy pipeline
 # as an explicit control so the bug's effect is measured, not assumed.
 #
 # Same seeds 0-4 as sweeps/augmentation_ablation.yaml, so every variant can

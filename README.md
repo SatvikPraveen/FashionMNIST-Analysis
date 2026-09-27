@@ -356,7 +356,7 @@ exactly 9,336 / 10,016 rather than correct / 10,000. All steps now count
 correct predictions per sample.
 
 **Correction 2: augmentation pipeline.** Two bugs affected every augmented
-run before commit `a341854`:
+run before commit `85459dd`:
 
 - torchvision transforms were called once on the whole batch tensor, so all
   images in a batch shared one crop offset, one flip decision and one
