@@ -26,6 +26,11 @@ pytest tests/ -q
 Then open `cluster/slurm/train_array.sbatch` and fill in the *site setup*
 block (module loads / venv activation / partition name).
 
+**Site-specific copies.** Keep scripts with your cluster's real partition,
+QOS, node exclusions and paths in `cluster/local/` (git-ignored), e.g.
+`cp cluster/slurm/*.sbatch cluster/local/` and edit those, so nothing
+site-specific is committed.
+
 ## 2. Run a sweep as a job array
 
 ```bash
@@ -71,6 +76,10 @@ roots can be pooled: `aggregate.py runs/a runs/b --group-by model`.
 
 ```bash
 sbatch cluster/slurm/train_single.sbatch --model resnet18 --pretrained --amp --epochs 30
+
+# any project script on one GPU (batch analysis, seed ensembles)
+sbatch cluster/slurm/python.sbatch src/cli/analyze_runs.py runs/baseline_seeds --out results/sweeps/baseline_seeds
+sbatch cluster/slurm/python.sbatch src/cli/ensemble_runs.py runs/baseline_seeds --out results/sweeps/seed_ensembles
 ```
 
 ## Notes

@@ -108,3 +108,6 @@ tests/*.csv
 # Sweep outputs and shared model/dataset caches (cluster)
 runs/
 .cache/
+
+# Site-specific cluster scripts and notes (partition, QOS, paths) stay local
+cluster/local/
