@@ -299,6 +299,18 @@ crop's padding turned out to be mid-grey rather than black, and applied
 per batch rather than per image (see the warning above). The crop result is
 therefore most likely a symptom of the bug, and is being re-tested.
 
+**Replication under the legacy pipeline** (`sweeps/crop_confirmation.yaml`:
+fresh seeds 5–9, 150-epoch budget, patience 15;
+[summary](results/sweeps/crop_confirmation_summary.md)). The penalty
+replicates and is larger on the smaller model: removing crop gains
+**+2.42 points for MiniCNN** (95% CI [+1.90, +2.94], p < 0.001, 5/5 seeds)
+and **+1.32 points for TinyVGG** ([+0.67, +1.96], p = 0.005, 5/5). Every run
+early-stopped between 30 and 90 epochs, far below the 150 cap, so the
+under-training explanation is ruled out. (The ResNet no-crop runs were
+cancelled once the bug was found.) Under the legacy pipeline the crop
+penalty is therefore real and robust, consistent with grey padding and
+per-batch offsets being the cause.
+
 ### Pretrained timm backbones vs training from scratch (3 seeds each, 2026-09-27, legacy pipeline)
 
 ImageNet weights via timm, grayscale input via `in_chans=1`, 28 px images
