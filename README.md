@@ -216,13 +216,13 @@ Sample predictions from the best TinyVGG model:
 > *augmented* run in the tables below used an augmentation pipeline that
 > (1) applied one random crop / flip / rotation to the **whole batch** instead
 > of per image, and (2) padded crops and rotations with **mid-grey** instead of
-> the black background. The results are reported as measured, but any
-> conclusion about augmentation — including "random crop hurts" and the
-> ensemble-calibration interaction — may be an artefact of the bug. They are
-> being re-run on the fixed pipeline with the old pipeline as an explicit
-> control (`sweeps/augmentation_fixed.yaml`, `sweeps/baseline_fixed.yaml`).
-> The `no_aug` rows and the LR grid's *relative* conclusions are unaffected in
-> kind, but all absolute augmented numbers should be read as "legacy pipeline".
+> the black background. The tables marked "legacy pipeline" are reported
+> as measured. The augmentation ablation has since been **re-run on the fixed
+> pipeline with the old one as an explicit control** (section below): the fix
+> changes accuracy by only +0.36 points (not significant), and the main
+> augmentation finding (random crop hurts) **holds on the fixed pipeline
+> too**, so the legacy conclusions about augmentation stand. Absolute
+> augmented numbers should still be read as "legacy pipeline".
 
 ### Multi-seed baseline (5 seeds each, 2026-09-27, legacy augmentation pipeline)
 
@@ -296,8 +296,9 @@ at the cause. With crop the model is robust to translation (error 0.176 vs
 0.260) and noise (0.520 vs 0.367); mean corruption error is 0.312 with crop
 and 0.263 without. That pattern led to the augmentation code, where the
 crop's padding turned out to be mid-grey rather than black, and applied
-per batch rather than per image (see the warning above). The crop result is
-therefore most likely a symptom of the bug, and is being re-tested.
+per batch rather than per image (see the warning above). I first suspected
+the crop penalty was a symptom of that bug; the fixed-pipeline re-run below
+shows it is **not**: cropping hurts even when implemented correctly.
 
 **Replication under the legacy pipeline** (`sweeps/crop_confirmation.yaml`:
 fresh seeds 5–9, 150-epoch budget, patience 15;
@@ -308,8 +309,38 @@ and **+1.32 points for TinyVGG** ([+0.67, +1.96], p = 0.005, 5/5). Every run
 early-stopped between 30 and 90 epochs, far below the 150 cap, so the
 under-training explanation is ruled out. (The ResNet no-crop runs were
 cancelled once the bug was found.) Under the legacy pipeline the crop
-penalty is therefore real and robust, consistent with grey padding and
-per-batch offsets being the cause.
+penalty is therefore real and robust; the fixed-pipeline re-run below shows
+the bug was not its cause.
+
+### Augmentation ablation on the fixed pipeline (TinyVGG, 5 seeds, 2026-09-27)
+
+Per-image random draws and black-background fill (commit `a341854`), same
+seeds 0–4 as the legacy ablation, plus a `legacy` variant that reproduces the
+old pipeline exactly (its seed-0 run matched the original run to four decimal
+places). Paired by seed against the fixed full recipe
+([summary](results/sweeps/augmentation_fixed_summary.md),
+[paired](results/sweeps/augmentation_fixed_paired.md)).
+
+| Variant | Test acc (mean ± std) | Δ vs fixed full | 95% CI of Δ | p | Seeds better |
+|---|---|---|---|---|---|
+| no random crop | **0.9362 ± 0.0036** | +0.0100 | [−0.0004, +0.0204] | 0.055 | 4 / 5 |
+| no rotation | 0.9324 ± 0.0031 | +0.0062 | [−0.0012, +0.0135] | 0.080 | 5 / 5 |
+| **full recipe (fixed)** | 0.9262 ± 0.0060 | — | — | — | — |
+| no Mixup/CutMix | 0.9257 ± 0.0060 | −0.0006 | [−0.0119, +0.0108] | 0.898 | 2 / 5 |
+| no horizontal flip | 0.9233 ± 0.0063 | −0.0029 | [−0.0148, +0.0089] | 0.528 | 2 / 5 |
+| legacy (buggy) pipeline | 0.9227 ± 0.0071 | −0.0036 | [−0.0105, +0.0034] | 0.228 | 1 / 5 |
+| no augmentation | 0.9169 ± 0.0031 | −0.0094 | [−0.0204, +0.0016] | 0.077 | 1 / 5 |
+
+**Findings.** (1) Fixing the bug is worth only +0.36 points (not
+significant): real and worth fixing, but not what drove any earlier
+conclusion. (2) **Geometric augmentation hurts this model even when
+correct**: removing the crop gains +1.0 points and removing rotation +0.6
+points (better on all 5 seeds). A plausible reason is that Fashion-MNIST items
+are already centred and size-normalised, so 4-pixel shifts and ±10° rotations
+mostly move the training distribution away from the test distribution.
+(3) Flip and Mixup/CutMix have no detectable effect; augmentation as a whole
+is worth about +0.9 points. The best recipe measured is the fixed pipeline
+**without random crop**, 0.9362 ± 0.0036.
 
 ### Pretrained timm backbones vs training from scratch (3 seeds each, 2026-09-27, legacy pipeline)
 
