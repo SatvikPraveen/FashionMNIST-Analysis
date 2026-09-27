@@ -49,19 +49,25 @@ class GradCAM:
     
     def _register_hooks(self) -> None:
         """Register forward and backward hooks."""
+        def save_grad(grad):
+            self.gradients = grad.detach()
+
         def forward_hook(module, input, output):
             self.activations = output.detach()
-        
-        def backward_hook(module, grad_input, grad_output):
-            self.gradients = grad_output[0].detach()
-        
-        # Find and register hooks on target layer
+            if output.requires_grad:
+                output.register_hook(save_grad)
+
+        # Find and register the hook on the target layer
+        found = False
         for name, module in self.model.named_modules():
             if name == self.target_layer:
                 module.register_forward_hook(forward_hook)
-                module.register_backward_hook(backward_hook)
-                logger.info(f"Hooks registered on layer: {name}")
+                logger.info(f"Hook registered on layer: {name}")
+                found = True
                 break
+        if not found:
+            names = [n for n, _ in self.model.named_modules() if n]
+            raise ValueError(f"Layer '{self.target_layer}' not found; available: {names}")
     
     def generate_cam(self, input_tensor: torch.Tensor, class_idx: Optional[int] = None) -> np.ndarray:
         """
@@ -74,10 +80,10 @@ class GradCAM:
         Returns:
             np.ndarray: CAM heatmap
         """
-        # Forward pass
+        # Forward pass with autograd on (the gradient at the target layer is needed)
         self.model.eval()
-        with torch.no_grad():
-            output = self.model(input_tensor)
+        with torch.enable_grad():
+            output = self.model(input_tensor.to(self.device))
         
         if class_idx is None:
             class_idx = output.argmax(dim=1).item()

@@ -63,7 +63,3 @@ def test_run_count_is_computed(built):
     n = mod.count_runs()
     assert n > 100 and f">{n}<" in page
 
-
-def test_no_cluster_identifiers(built):
-    _, page = built
-    pass

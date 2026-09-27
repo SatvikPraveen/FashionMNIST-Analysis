@@ -249,3 +249,88 @@ class TestEndToEndInference:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestFashionMnistServing:
+    """Grayscale preprocessing and checkpoint loading used by the API and apps."""
+
+    def test_for_fashion_mnist_outputs_one_normalised_channel(self):
+        from src.serving.inference import ImagePreprocessor
+        pre = ImagePreprocessor.for_fashion_mnist(invert=False)
+        rgb = np.zeros((60, 40, 3), dtype=np.uint8)
+        t = pre.preprocess(rgb)
+        assert t.shape == (1, 1, 28, 28)
+        # black pixels -> (0 - mean) / std, the value the training pipeline uses
+        assert torch.allclose(t, torch.full_like(t, (0 - 0.2860) / 0.3530), atol=1e-5)
+
+    def test_auto_invert_makes_light_background_black(self):
+        from src.serving.inference import ImagePreprocessor
+        img = np.full((56, 56), 255, dtype=np.uint8)
+        img[14:42, 14:42] = 40                      # dark item on a white background
+        t = ImagePreprocessor.for_fashion_mnist(invert=None).preprocess(img)
+        border, centre = t[0, 0, 0, 0].item(), t[0, 0, 14, 14].item()
+        assert border < centre                      # background now dark, item light
+
+    def test_rgba_and_single_channel_inputs(self):
+        from src.serving.inference import ImagePreprocessor
+        pre = ImagePreprocessor.for_fashion_mnist()
+        assert pre.preprocess(np.zeros((30, 30, 4), dtype=np.uint8)).shape == (1, 1, 28, 28)
+        assert pre.preprocess(np.zeros((30, 30, 1), dtype=np.uint8)).shape == (1, 1, 28, 28)
+
+    def test_every_registry_model_serves_through_the_engine(self):
+        pytest.importorskip("timm")
+        from src.models import build_model
+        from src.serving.inference import ImagePreprocessor, RealWorldInference
+        pre = ImagePreprocessor.for_fashion_mnist()
+        img = np.random.default_rng(0).integers(0, 255, (50, 50, 3), dtype=np.uint8)
+        for name in ("minicnn", "tinyvgg", "resnet", "resnet18"):
+            engine = RealWorldInference(build_model(name).eval(), pre)
+            assert 0 <= engine.predict(img)["predicted_class"] < 10
+
+    def test_load_trained_model_uses_saved_weights(self, tmp_path):
+        import json
+        from src.models import build_model
+        from src.serving.inference import load_trained_model
+        d = tmp_path / "models" / "best_model_weights"; d.mkdir(parents=True)
+        torch.manual_seed(1)
+        ref = build_model("tinyvgg")
+        torch.save(ref.state_dict(), d / "best_model_weights.pth")
+        (d / "best_model_info.json").write_text(json.dumps({"model_name": "tinyvgg"}))
+        model, weights, arch = load_trained_model("best", root=tmp_path)
+        assert arch == "tinyvgg" and weights is not None
+        x = torch.randn(2, 1, 28, 28)
+        assert torch.allclose(model(x), ref.eval()(x), atol=1e-5)
+
+    def test_load_trained_model_reports_missing_weights(self, tmp_path):
+        from src.serving.inference import load_trained_model
+        model, weights, arch = load_trained_model("minicnn", root=tmp_path)
+        assert weights is None and arch == "minicnn"
+
+    def test_shipped_best_checkpoint_loads(self):
+        from pathlib import Path
+        from src.serving.inference import load_trained_model
+        root = Path(__file__).resolve().parent.parent
+        model, weights, arch = load_trained_model("best", root=root)
+        assert weights is not None and arch == "tinyvgg"
+
+
+class TestExplainabilityAndMonitoring:
+    def test_gradcam_produces_a_map(self):
+        from src.evaluation.explainability import GradCAM
+        from src.models import build_model
+        cam = GradCAM(build_model("tinyvgg").eval(), "conv_block_2").generate_cam(torch.randn(1, 1, 28, 28))
+        assert cam.ndim == 2 and cam.max() <= 1.0 + 1e-6 and cam.min() >= 0.0
+
+    def test_gradcam_unknown_layer_raises(self):
+        from src.evaluation.explainability import GradCAM
+        from src.models import build_model
+        with pytest.raises(ValueError):
+            GradCAM(build_model("tinyvgg"), "no_such_layer")
+
+    def test_prediction_monitor_accepts_scalars_and_arrays(self):
+        from src.monitoring.tracker import PredictionMonitor
+        m = PredictionMonitor()
+        m.update(3, 0.9)
+        m.update(np.array([1, 2]), np.array([0.3, 0.8]), ground_truth=np.array([1, 0]))
+        assert m.detect_low_confidence(0.5) == [1]
+        assert m.get_statistics()["predictions_seen"] == 3

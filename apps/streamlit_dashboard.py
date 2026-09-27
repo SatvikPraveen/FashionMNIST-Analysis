@@ -16,9 +16,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.config.settings import load_config
-from src.models.architectures import ResNet, BasicBlock, MiniCNN, TinyVGG
-from src.models.transfer import TransferLearningModel
-from src.serving.inference import ImagePreprocessor, RealWorldInference
+from src.serving.inference import ImagePreprocessor, RealWorldInference, load_trained_model
+
+# Display name -> checkpoint key for load_trained_model ("best" = models/best_model_weights/)
+MODEL_CHOICES = {
+    "Best saved model": "best",
+    "TinyVGG": "tinyvgg",
+    "MiniCNN": "minicnn",
+    "ResNet": "resnet",
+}
 from src.models.ensemble import EnsembleVoting
 from src.evaluation.explainability import GradCAM
 import matplotlib.pyplot as plt
@@ -46,11 +52,8 @@ with st.sidebar:
     
     model_type = st.selectbox(
         "Model Type",
-        ["ResNet", "MiniCNN", "TinyVGG", "Vision Transformer"]
+        list(MODEL_CHOICES)
     )
-    
-    if model_type == "Vision Transformer":
-        st.info("ℹ️ Vision Transformer requires TIMM library")
     
     confidence_threshold = st.slider(
         "Confidence Threshold",
@@ -89,47 +92,18 @@ def _get_device() -> torch.device:
 
 @st.cache_resource
 def load_model(model_type: str):
-    """Load model architecture and best available weights."""
-    # Weight file candidates: new-style training output, then legacy files
-    _WEIGHTS = {
-        "ResNet":  ["models/all_models/resnet/resnet_best.pth",   "models/all_models/resnet/resnet_model_weights.pth"],
-        "MiniCNN": ["models/all_models/minicnn/minicnn_best.pth",  "models/all_models/minicnn/mini_cnn_model_weights.pth"],
-        "TinyVGG": ["models/all_models/tinyvgg/tinyvgg_best.pth",  "models/all_models/tinyvgg/tiny_vgg_model_weights.pth"],
-    }
-
+    """Load a model with its trained weights (see src.serving.inference.load_trained_model)."""
     try:
-        if model_type == "ResNet":
-            model = ResNet(BasicBlock, [2, 2, 2, 2], num_classes=10)
-        elif model_type == "MiniCNN":
-            model = MiniCNN(in_channels=1, num_classes=10)
-        elif model_type == "TinyVGG":
-            model = TinyVGG(in_channels=1, hidden_units=32, num_classes=10)
-        elif model_type == "Vision Transformer":
-            try:
-                tl = TransferLearningModel("vit_base_patch16_224", num_classes=10)
-                model = tl.model
-            except ImportError:
-                st.error("TIMM library not installed")
-                return None
-        else:
+        key = MODEL_CHOICES.get(model_type)
+        if key is None:
             st.error(f"Unknown model type: {model_type}")
             return None
-
-        # Load trained weights
-        device = _get_device()
-        weight_paths = _WEIGHTS.get(model_type, [])
-        loaded = False
-        for wp in weight_paths:
-            if Path(wp).exists():
-                state = torch.load(wp, map_location=device, weights_only=True)
-                model.load_state_dict(state)
-                st.sidebar.caption(f"✅ Weights: {wp}")
-                loaded = True
-                break
-        if not loaded:
-            st.sidebar.warning(f"⚠️ No saved weights found for {model_type}; using random init.")
-
-        model.to(device).eval()
+        model, weights, arch = load_trained_model(key, device=str(_get_device()))
+        if weights is None:
+            st.sidebar.warning(f"No trained weights found for {model_type}; predictions come from an "
+                               f"untrained {arch}. Train it with src/cli/train.py.")
+        else:
+            st.sidebar.caption(f"Weights: {weights} ({arch})")
         return model
     except Exception as e:
         st.error(f"Failed to load model: {e}")
@@ -139,7 +113,8 @@ def load_model(model_type: str):
 @st.cache_resource
 def get_preprocessor():
     """Get image preprocessor."""
-    return ImagePreprocessor(target_size=224)
+    # Every project model takes 28x28 grayscale input; invert photos with light backgrounds
+    return ImagePreprocessor.for_fashion_mnist(invert=None)
 
 
 # Single Prediction Mode

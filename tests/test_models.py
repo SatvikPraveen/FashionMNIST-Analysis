@@ -182,13 +182,14 @@ class TestMonitoring:
     
     def test_drift_detector(self):
         """Test drift detector."""
-        # Reference data (normal distribution)
-        ref_data = np.random.normal(0, 1, (100, 10))
+        # Reference data (normal distribution); seeded so the test cannot flake
+        rng = np.random.default_rng(0)
+        ref_data = rng.normal(0, 1, (100, 10))
         
         detector = DriftDetector(reference_data=ref_data, threshold=0.5)
         
         # Test data from same distribution
-        test_data = np.random.normal(0, 1, (50, 10))
+        test_data = rng.normal(0, 1, (50, 10))
         drift_detected, score = detector.detect_drift(test_data)
         
         # Score should be low (no drift)

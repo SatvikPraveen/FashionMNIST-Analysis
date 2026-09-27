@@ -39,25 +39,50 @@ class ImagePreprocessor:
         "Ankle Boot"
     ]
     
+    # Fashion-MNIST statistics used by the training pipeline
+    FMNIST_MEAN, FMNIST_STD = 0.2860, 0.3530
+
     def __init__(self, target_size: int = 224, normalize: bool = True,
-                 convert_to_rgb: bool = True, device: str = "cpu"):
+                 convert_to_rgb: bool = True, device: str = "cpu",
+                 invert: Optional[bool] = False):
         """
         Initialize preprocessor.
         
         Args:
             target_size (int): Target image size (square)
-            normalize (bool): Apply ImageNet normalization
-            convert_to_rgb (bool): Convert grayscale to RGB
+            normalize (bool): Normalise with ImageNet statistics (RGB output) or
+                Fashion-MNIST statistics (grayscale output)
+            convert_to_rgb (bool): True -> 3-channel RGB output (legacy
+                TransferLearningModel). False -> 1-channel grayscale output,
+                which is what every model trained by this project expects.
             device (str): Device for preprocessing
+            invert (bool or None): Grayscale output only. Fashion-MNIST shows
+                light items on a black background, most photos are the reverse.
+                True inverts, False never does, None inverts automatically when
+                the image border is brighter than its centre.
         """
         self.target_size = target_size
         self.normalize = normalize
         self.convert_to_rgb = convert_to_rgb
+        self.invert = invert
         self.device = torch.device(device)
         
-        # ImageNet normalization statistics
-        self.mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
-        self.std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+        if convert_to_rgb:
+            # ImageNet normalization statistics
+            self.mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
+            self.std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+        else:
+            self.mean = torch.tensor([self.FMNIST_MEAN]).view(1, 1, 1)
+            self.std = torch.tensor([self.FMNIST_STD]).view(1, 1, 1)
+
+    @classmethod
+    def for_fashion_mnist(cls, invert: Optional[bool] = None, device: str = "cpu") -> "ImagePreprocessor":
+        """
+        Preprocessor matching the training pipeline: 28x28 grayscale,
+        Fashion-MNIST normalisation. Right for every model built by
+        ``src.models.build_model`` (timm backbones resize internally).
+        """
+        return cls(target_size=28, normalize=True, convert_to_rgb=False, device=device, invert=invert)
     
     def load_image(self, image_path: Union[str, Path]) -> np.ndarray:
         """
@@ -109,6 +134,8 @@ class ImagePreprocessor:
             raise ValueError(f"Unsupported image type: {type(image)}")
         
         # Handle different image formats
+        if len(image.shape) == 3 and image.shape[2] == 1:
+            image = image[:, :, 0]
         if len(image.shape) == 2:
             # Grayscale
             image = np.stack([image] * 3, axis=2)
@@ -119,14 +146,26 @@ class ImagePreprocessor:
             raise ValueError(f"Unsupported image channels: {image.shape[2]}")
         
         # Resize to target size
-        image = cv2.resize(image, (self.target_size, self.target_size))
+        image = cv2.resize(image, (self.target_size, self.target_size), interpolation=cv2.INTER_AREA)
         
         # Normalize to 0-1
         if image.dtype != np.float32:
             image = image.astype(np.float32) / 255.0
         
-        # Convert to tensor and rearrange (H, W, C) -> (C, H, W)
-        image_tensor = torch.from_numpy(image).permute(2, 0, 1)
+        if self.convert_to_rgb:
+            # Convert to tensor and rearrange (H, W, C) -> (C, H, W)
+            image_tensor = torch.from_numpy(np.ascontiguousarray(image)).permute(2, 0, 1)
+        else:
+            gray = image @ np.array([0.299, 0.587, 0.114], dtype=np.float32)   # ITU-R 601 luma
+            invert = self.invert
+            if invert is None:
+                b = max(1, self.target_size // 7)
+                border = np.concatenate([gray[:b].ravel(), gray[-b:].ravel(), gray[:, :b].ravel(), gray[:, -b:].ravel()])
+                centre = gray[b:-b, b:-b]
+                invert = centre.size > 0 and border.mean() > centre.mean()
+            if invert:
+                gray = 1.0 - gray
+            image_tensor = torch.from_numpy(np.ascontiguousarray(gray)).unsqueeze(0)
         
         # Apply normalization
         if self.normalize:
@@ -356,3 +395,59 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     preprocessor = ImagePreprocessor(target_size=224)
     logger.info("Real-world inference module loaded successfully")
+
+
+# --------------------------------------------------------------------------- #
+# Finding and loading trained checkpoints (used by the apps)
+# --------------------------------------------------------------------------- #
+
+BEST_MODEL_DIR = Path("models/best_model_weights")
+
+
+def find_checkpoint(name: str, root: Union[str, Path] = ".") -> Optional[Tuple[str, Path]]:
+    """
+    Locate trained weights for a model.
+
+    Args:
+        name: ``"best"`` for the model in ``models/best_model_weights/``, or a
+            registry name such as ``"tinyvgg"`` (looks in
+            ``models/all_models/<name>/<name>_best.pth``).
+        root: Project root.
+
+    Returns:
+        ``(architecture_name, weights_path)``, or None if nothing is saved.
+    """
+    import json
+    root = Path(root)
+    if name == "best":
+        weights = root / BEST_MODEL_DIR / "best_model_weights.pth"
+        info = root / BEST_MODEL_DIR / "best_model_info.json"
+        if weights.exists() and info.exists():
+            return json.loads(info.read_text())["model_name"], weights
+        return None
+    weights = root / "models" / "all_models" / name / f"{name}_best.pth"
+    return (name, weights) if weights.exists() else None
+
+
+def load_trained_model(name: str, root: Union[str, Path] = ".", device: str = "cpu"
+                       ) -> Tuple[torch.nn.Module, Optional[Path], str]:
+    """
+    Build a model and load its saved weights when they exist.
+
+    The architecture comes from the checkpoint's ``_spec.json`` when present,
+    otherwise from the registry name. Returns ``(model, weights_path, arch)``;
+    ``weights_path`` is None when no trained weights were found, in which
+    case the model is randomly initialised and callers should say so.
+    """
+    from src.models.registry import build_model, load_model_from_checkpoint, spec_path_for
+    found = find_checkpoint(name, root)
+    if found is None:
+        arch = name if name != "best" else "tinyvgg"
+        return build_model(arch).to(device).eval(), None, arch
+    arch, weights = found
+    if Path(spec_path_for(str(weights))).exists():
+        model = load_model_from_checkpoint(str(weights), map_location=device)
+    else:
+        model = build_model(arch)
+        model.load_state_dict(torch.load(weights, map_location=device, weights_only=True))
+    return model.to(device).eval(), weights, arch

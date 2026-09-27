@@ -211,15 +211,19 @@ class PredictionMonitor:
         Update monitor with new predictions.
         
         Args:
-            pred: Predicted class
-            confidence: Prediction confidence
-            ground_truth: True label (optional)
+            pred: Predicted class, or an array of them
+            confidence: Prediction confidence, or an array (same length as pred)
+            ground_truth: True label(s) (optional)
         """
-        self.predictions.append(pred)
-        self.confidences.append(confidence)
+        preds = np.atleast_1d(np.asarray(pred)).ravel()
+        confs = np.atleast_1d(np.asarray(confidence, dtype=float)).ravel()
+        if len(preds) != len(confs):
+            raise ValueError(f"pred ({len(preds)}) and confidence ({len(confs)}) lengths differ")
+        self.predictions.extend(preds.tolist())
+        self.confidences.extend(confs.tolist())
         
         if ground_truth is not None:
-            self.ground_truth.append(ground_truth)
+            self.ground_truth.extend(np.atleast_1d(np.asarray(ground_truth)).ravel().tolist())
     
     def get_statistics(self) -> Dict[str, float]:
         """

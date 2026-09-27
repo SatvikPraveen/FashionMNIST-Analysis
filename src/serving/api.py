@@ -55,6 +55,7 @@ class ModelState:
     inference_engine = None
     ensemble = None
     config = None
+    model_name = "unknown"
 
 model_state = ModelState()
 
@@ -135,12 +136,14 @@ async def initialize_model(
         from src.serving.inference import ImagePreprocessor, RealWorldInference
         from src.models.architectures import ResNet, BasicBlock
         from src.models.transfer import TransferLearningModel
+        from src.models.registry import load_model_from_checkpoint, spec_path_for, ModelSpec
         
         # Load config
         model_state.config = load_config(config_path)
         logger.info(f"Configuration loaded from {config_path}")
         
         # Load model
+        model_state.model_name = model_state.config.model.architecture
         device = model_state.config.model.device
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -153,20 +156,27 @@ async def initialize_model(
                 device=device
             )
             model_state.model = tl_model.model
-        else:
-            model_state.model = ResNet(BasicBlock, [2, 2, 2, 2], 
-                                       num_classes=model_state.config.model.num_classes)
-            model_state.model.load_state_dict(
-                torch.load(model_path, map_location=device, weights_only=True)
+            # Legacy wrapper: 3-channel ImageNet-normalised input
+            model_state.preprocessor = ImagePreprocessor(
+                target_size=model_state.config.data.image_size,
+                normalize=model_state.config.data.normalize,
+                device=device
             )
+        else:
+            # Rebuild the exact architecture from <weights>_spec.json (written by
+            # train.py); fall back to the custom ResNet for older checkpoints.
+            if os.path.exists(spec_path_for(model_path)):
+                model_state.model = load_model_from_checkpoint(model_path, map_location=device)
+                model_state.model_name = ModelSpec.load(spec_path_for(model_path)).name
+            else:
+                model_state.model = ResNet(BasicBlock, [2, 2, 2, 2],
+                                           num_classes=model_state.config.model.num_classes)
+                model_state.model.load_state_dict(
+                    torch.load(model_path, map_location=device, weights_only=True)
+                )
             model_state.model = model_state.model.to(device).eval()
-        
-        # Initialize preprocessor and inference engine
-        model_state.preprocessor = ImagePreprocessor(
-            target_size=model_state.config.data.image_size,
-            normalize=model_state.config.data.normalize,
-            device=device
-        )
+            # Every project model takes 28x28 grayscale, Fashion-MNIST-normalised input
+            model_state.preprocessor = ImagePreprocessor.for_fashion_mnist(device=device)
         
         model_state.inference_engine = RealWorldInference(
             model_state.model,
@@ -181,7 +191,7 @@ async def initialize_model(
             "status": "success",
             "message": "Model initialized successfully",
             "model_info": {
-                "model_name": model_state.config.model.architecture,
+                "model_name": model_state.model_name,
                 "num_parameters": get_num_parameters(model_state.model),
                 "num_classes": model_state.config.model.num_classes,
                 "device": device
@@ -202,10 +212,10 @@ async def get_model_info() -> ModelInfo:
     device = next(model_state.model.parameters()).device
     
     return ModelInfo(
-        model_name=model_state.config.model.architecture if model_state.config else "unknown",
+        model_name=model_state.model_name,
         num_parameters=get_num_parameters(model_state.model),
         num_classes=model_state.config.model.num_classes if model_state.config else 10,
-        input_size=model_state.config.data.image_size if model_state.config else 224,
+        input_size=model_state.preprocessor.target_size if model_state.preprocessor else 28,
         device=str(device)
     )
 

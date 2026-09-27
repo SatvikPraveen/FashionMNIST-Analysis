@@ -14,9 +14,15 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.models.architectures import ResNet, BasicBlock, MiniCNN, TinyVGG
-from src.serving.inference import ImagePreprocessor, RealWorldInference
-from src.models.transfer import TransferLearningModel
+from src.serving.inference import ImagePreprocessor, RealWorldInference, load_trained_model
+
+# Display name -> checkpoint key for load_trained_model ("best" = models/best_model_weights/)
+MODEL_CHOICES = {
+    "Best saved model": "best",
+    "TinyVGG": "tinyvgg",
+    "MiniCNN": "minicnn",
+    "ResNet": "resnet",
+}
 
 
 # Class names
@@ -39,38 +45,31 @@ class FashionMNISTPredictor:
     
     def __init__(self):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.preprocessor = ImagePreprocessor(target_size=224, device=str(self.device))
+        # Every model this project trains takes 28x28 grayscale input; invert
+        # automatically when a photo has a light background.
+        self.preprocessor = ImagePreprocessor.for_fashion_mnist(invert=None, device=str(self.device))
         self.model = None
         self.inference = None
         self.current_model = None
     
     def load_model(self, model_name: str):
-        """Load specified model."""
+        """Load the named model with its trained weights."""
         try:
-            if model_name == "ResNet":
-                self.model = ResNet(BasicBlock, [2, 2, 2, 2], num_classes=10)
-            elif model_name == "MiniCNN":
-                self.model = MiniCNN(in_channels=1, num_classes=10)
-            elif model_name == "TinyVGG":
-                self.model = TinyVGG(in_channels=1, hidden_units=32, num_classes=10)
-            elif model_name == "Vision Transformer":
-                try:
-                    tl = TransferLearningModel("vit_base_patch16_224", num_classes=10)
-                    self.model = tl.model
-                except ImportError:
-                    return f"Error: TIMM library not installed"
-            
-            self.model = self.model.to(self.device).eval()
+            key = MODEL_CHOICES[model_name]
+            self.model, weights, arch = load_trained_model(key, device=str(self.device))
             self.inference = RealWorldInference(
                 model=self.model,
                 preprocessor=self.preprocessor,
                 device=str(self.device)
             )
             self.current_model = model_name
-            return f"✅ {model_name} loaded successfully"
+            if weights is None:
+                return (f"Warning: no trained weights found for {model_name}; "
+                        f"predictions come from an untrained {arch}. Train it with src/cli/train.py.")
+            return f"Loaded {model_name} ({arch}) from {weights}"
         
         except Exception as e:
-            return f"❌ Failed to load model: {e}"
+            return f"Failed to load model: {e}"
     
     def predict(self, image: Image.Image, model_name: str) -> tuple:
         """Make prediction on image."""
@@ -136,8 +135,8 @@ with gr.Blocks(title="FashionMNIST Classifier") as demo:
             )
             
             model_selector = gr.Radio(
-                choices=["ResNet", "MiniCNN", "TinyVGG", "Vision Transformer"],
-                value="ResNet",
+                choices=list(MODEL_CHOICES),
+                value="Best saved model",
                 label="Select Model"
             )
             
@@ -171,10 +170,11 @@ with gr.Blocks(title="FashionMNIST Classifier") as demo:
     gr.Markdown(
         """
         ### Model Information
-        - **ResNet**: Residual Network with 18 layers
-        - **MiniCNN**: Lightweight custom CNN
-        - **TinyVGG**: VGG-inspired architecture
-        - **Vision Transformer**: State-of-the-art transformer-based model
+        - **Best saved model**: the checkpoint in `models/best_model_weights/`
+        - **TinyVGG**, **MiniCNN**, **ResNet**: weights from `models/all_models/<name>/` once trained
+          with `src/cli/train.py`; without them the app says the model is untrained.
+        - Photos with a light background are inverted automatically to match
+          Fashion-MNIST's light-on-black images.
         
         ### Fashion MNIST Classes
         1. T-shirt/top
