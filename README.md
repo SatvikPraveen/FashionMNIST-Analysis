@@ -79,7 +79,7 @@ python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt          # or cluster/requirements-cluster.txt for training only
 
 python src/cli/prepare_data.py --output-dir data/processed   # download + seeded CSV splits
-pytest tests/ -q                         # 132 tests
+pytest tests/ -q
 ```
 
 Train and evaluate:
@@ -101,7 +101,7 @@ python src/cli/evaluate.py --model_path models/best_model_weights/best_model_wei
 ```
 
 Training runs on CUDA, Apple MPS or CPU, chosen automatically. See
-[`docs/USAGE_GUIDE.md`](docs/USAGE_GUIDE.md) for every flag.
+[`docs/USAGE_GUIDE.md`](docs/USAGE_GUIDE.md) for more.
 
 ## Reproducing the experiments
 
@@ -422,7 +422,7 @@ FashionMNIST-Analysis/
 │   └── config/              # config loading
 ├── cluster/                 # generic SLURM job templates, dataset/weight prefetch
 ├── site/                    # generator for the project website (built from results/sweeps/)
-├── tests/                   # 132 pytest tests, run in CI on Python 3.10 and 3.11
+├── tests/                   # pytest suite, run in CI on Python 3.10 and 3.11
 ├── notebooks/, eda/         # original exploratory and modelling notebooks
 ├── figures/                 # EDA, classical-ML and evaluation plots
 ├── models/                  # original single-seed checkpoints
@@ -460,10 +460,12 @@ The original exploratory workflow, kept for reference:
 ## Documentation
 
 - [Research plan](docs/RESEARCH_PLAN.md): questions, protocol and status.
-- [Usage guide](docs/USAGE_GUIDE.md): every command-line flag.
+- [Usage guide](docs/USAGE_GUIDE.md): how to do each task.
+- [Command-line reference](docs/CLI_REFERENCE.md): every flag of every tool, generated from the tools.
 - [Cluster guide](cluster/README.md): running sweeps as SLURM job arrays.
-- [Architecture](docs/ARCHITECTURE.md), [features](docs/FEATURES.md) and
-  [deployment](docs/DEPLOYMENT.md).
+- [Feature guide](docs/FEATURES.md): each module, with tested examples.
+- [Architecture](docs/ARCHITECTURE.md): how the code fits together and why.
+- [Deployment](docs/DEPLOYMENT.md): Docker and serving.
 - [Contributing](.github/CONTRIBUTING.md) and
   [code of conduct](.github/CODE_OF_CONDUCT.md).
 
