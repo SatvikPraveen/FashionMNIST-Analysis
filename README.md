@@ -217,12 +217,13 @@ Sample predictions from the best TinyVGG model:
 > (1) applied one random crop / flip / rotation to the **whole batch** instead
 > of per image, and (2) padded crops and rotations with **mid-grey** instead of
 > the black background. The tables marked "legacy pipeline" are reported
-> as measured. The augmentation ablation has since been **re-run on the fixed
-> pipeline with the old one as an explicit control** (section below): the fix
-> changes accuracy by only +0.36 points (not significant), and the main
-> augmentation finding (random crop hurts) **holds on the fixed pipeline
-> too**, so the legacy conclusions about augmentation stand. Absolute
-> augmented numbers should still be read as "legacy pipeline".
+> as measured. Both the ablation and the baseline were **re-run on the fixed
+> pipeline with the old one as a paired control** (sections below). The fix
+> matters most for the largest CNN: **ResNet gains +1.55 points and its seed
+> spread shrinks 7×, so ResNet now clearly beats TinyVGG** (the legacy "they
+> tie" conclusion was an artefact). For TinyVGG the fix is worth only +0.36
+> to +0.48 points, and the augmentation findings (crop hurts, the
+> ensemble-calibration interaction) hold on the fixed pipeline.
 
 ### Multi-seed baseline (5 seeds each, 2026-09-27, legacy augmentation pipeline)
 
@@ -237,7 +238,8 @@ Produced by `sweeps/baseline_seeds.yaml` → `src/cli/aggregate.py`
 | TinyVGG | 5 | 0.9225 ± 0.0057 | ±0.0071 | 0.9134 | 0.9274 | 0.14M | 4.5 min |
 | MiniCNN | 5 | 0.9000 ± 0.0034 | ±0.0043 | 0.8975 | 0.9060 | 0.11M | 3.9 min |
 
-What the seeds change about the story: the single-run claim that TinyVGG
+What the seeds change about the story (legacy pipeline; **superseded by the
+fixed-pipeline baseline below**): the single-run claim that TinyVGG
 beats ResNet is **not supported**. The two confidence intervals overlap,
 and ResNet's seed-to-seed spread (0.906–0.940) is more than twice
 TinyVGG's. MiniCNN is clearly behind both. TinyVGG remains the best
@@ -264,6 +266,27 @@ contrast and brightness shifts far better. ResNet is the only one of the
 three with batch normalisation, which is a plausible (untested) cause.
 MiniCNN is, oddly, the most robust to Gaussian noise. The top confusion for
 every model is Shirt ↔ T-shirt/top.
+
+### Multi-seed baseline on the fixed pipeline (5 seeds each, 2026-09-27)
+
+Same seeds 0–4 and recipe as the legacy baseline above, with per-image
+augmentation and black-background fill
+([summary](results/sweeps/baseline_fixed_summary.md),
+[runs](results/sweeps/baseline_fixed_runs.csv)).
+
+| Model | Legacy pipeline | **Fixed pipeline** | 95% CI | Δ (paired by seed) | p | Seeds better | Params |
+|---|---|---|---|---|---|---|---|
+| ResNet-18 (custom) | 0.9256 ± 0.0134 | **0.9412 ± 0.0018** | ±0.0023 | +0.0155 | 0.071 | 4 / 5 | 11.17M |
+| TinyVGG | 0.9225 ± 0.0057 | 0.9273 ± 0.0035 | ±0.0044 | +0.0048 | 0.123 | 4 / 5 | 0.14M |
+| MiniCNN | 0.9000 ± 0.0034 | 0.9090 ± 0.0042 | ±0.0052 | +0.0089 | 0.016 | 5 / 5 | 0.11M |
+
+**Findings.** The augmentation bug cost every model accuracy and cost the
+largest one the most: ResNet gains 1.55 points and its seed-to-seed spread
+falls from 0.0134 to 0.0018. On the fixed pipeline **ResNet clearly beats
+TinyVGG** (non-overlapping 95% CIs), reversing the legacy conclusion that the
+two tie; that "tie" was produced by the bug's extra variance. TinyVGG keeps a
+large accuracy-per-parameter advantage (80× fewer parameters for 1.4 points
+less).
 
 ### Augmentation ablation (TinyVGG, 5 seeds per variant, 2026-09-27, legacy pipeline)
 
@@ -340,7 +363,10 @@ are already centred and size-normalised, so 4-pixel shifts and ±10° rotations
 mostly move the training distribution away from the test distribution.
 (3) Flip and Mixup/CutMix have no detectable effect; augmentation as a whole
 is worth about +0.9 points. The best recipe measured is the fixed pipeline
-**without random crop**, 0.9362 ± 0.0036.
+**without random crop**, 0.9362 ± 0.0036. Its robustness picture is unchanged from
+legacy: dropping the crop also gives the lowest mean corruption error
+(0.260 vs 0.296 for the fixed full recipe;
+[analysis](results/sweeps/augmentation_fixed_analysis_summary.md)).
 
 ### Pretrained timm backbones vs training from scratch (3 seeds each, 2026-09-27, legacy pipeline)
 

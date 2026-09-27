@@ -33,7 +33,7 @@ set**, evaluated **once** from the best-validation checkpoint.
 
 | # | Answer | Evidence |
 |---|---|---|
-| Q1 | ResNet 0.9256 ± 0.0134, TinyVGG 0.9225 ± 0.0057, MiniCNN 0.9000 ± 0.0034 (n = 5). The single-seed "TinyVGG is best" claim does **not** hold: ResNet and TinyVGG CIs overlap, and ResNet's seed spread is >2× TinyVGG's. | `results/sweeps/baseline_seeds_*` |
+| Q1 | On the fixed pipeline: ResNet 0.9412 ± 0.0018, TinyVGG 0.9273 ± 0.0035, MiniCNN 0.9090 ± 0.0042 (n = 5); ResNet clearly best (non-overlapping CIs). On the legacy pipeline ResNet and TinyVGG appeared to tie because the augmentation bug cost ResNet 1.55 points and inflated its variance 7×. The original single-seed "TinyVGG is best" claim does not hold on either pipeline. | `results/sweeps/baseline_fixed_*`, `baseline_seeds_*` |
 | Q3 | Padded random crop **hurts** TinyVGG: removing it gains +0.95 points (paired, p = 0.018, 5/5 seeds). No other single component is detectable at n = 5; the whole recipe is worth only +0.65 points over none (p = 0.127). | `results/sweeps/augmentation_ablation_*` |
 | Q3b | The crop penalty replicates on fresh seeds with a 150-epoch budget (MiniCNN +2.4, TinyVGG +1.3 points, p ≤ 0.005) and **survives the augmentation-bug fix** (+1.0, p = 0.055; rotation also hurts, +0.6). The bug fix itself is worth only +0.36 points. | `results/sweeps/crop_confirmation_*`, `augmentation_fixed_*` |
 | Q4 | The default LR 1e-3 / WD 1e-4 is optimal; LR 3e-4 is equivalent, LR 3e-3 costs 3–4 points, WD 5e-4 loses on every seed. | `results/sweeps/lr_grid_*` |
