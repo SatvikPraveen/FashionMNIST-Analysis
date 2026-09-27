@@ -7,6 +7,7 @@ Usage:
     python src/cli/aggregate.py runs/baseline_seeds
     python src/cli/aggregate.py runs/baseline_seeds --metric test_acc --out results/baseline
     python src/cli/aggregate.py runs/a runs/b --group-by model   # pool several sweeps
+    python src/cli/aggregate.py runs/augmentation_ablation --baseline 'tinyvgg|full'  # paired by seed
 
 Outputs (with --out PREFIX): PREFIX_runs.csv (one row per run) and
 PREFIX_summary.csv + PREFIX_summary.md (one row per group).
@@ -109,6 +110,73 @@ def summarize(rows: List[Dict[str, Any]], metric: str = "test_acc",
     return out
 
 
+def paired_comparison(rows: List[Dict[str, Any]], baseline: str, metric: str = "test_acc",
+                      group_by: str = "group") -> List[Dict[str, Any]]:
+    """
+    Compare every group against ``baseline`` using only seeds both share.
+
+    Because the sweeps reuse the same seeds across variants, the per-seed
+    difference removes seed-to-seed noise that an unpaired CI comparison
+    keeps. Reports mean / std of the difference, a 95% t-CI, the paired
+    t-test p-value and how many seeds favoured each side.
+    """
+    by_group: Dict[Any, Dict[Any, float]] = {}
+    for r in rows:
+        if r.get("status") != "finished" or r.get(metric) is None or r.get("seed") is None:
+            continue
+        by_group.setdefault(r.get(group_by), {})[r["seed"]] = float(r[metric])
+    if baseline not in by_group:
+        raise ValueError(f"baseline group '{baseline}' not found; have {sorted(map(str, by_group))}")
+    base = by_group[baseline]
+
+    out = []
+    for key, vals in by_group.items():
+        if key == baseline:
+            continue
+        seeds = sorted(set(vals) & set(base))
+        n = len(seeds)
+        if n == 0:
+            continue
+        diffs = [vals[s] - base[s] for s in seeds]
+        mean = sum(diffs) / n
+        std = math.sqrt(sum((d - mean) ** 2 for d in diffs) / (n - 1)) if n > 1 else 0.0
+        if n > 1 and std > 0:
+            t = mean / (std / math.sqrt(n))
+            try:
+                from scipy import stats
+                p = float(2 * stats.t.sf(abs(t), df=n - 1))
+            except ImportError:  # pragma: no cover
+                p = float("nan")
+            ci = _t95(n) * std / math.sqrt(n)
+        else:
+            t, p, ci = float("nan"), float("nan"), float("nan")
+        out.append({
+            group_by: key, "baseline": baseline, "n_paired": n,
+            "diff_mean": mean, "diff_std": std, "diff_ci95": ci,
+            "t": t, "p_value": p,
+            "wins": sum(d > 0 for d in diffs), "losses": sum(d < 0 for d in diffs),
+            "seeds": seeds,
+        })
+    out.sort(key=lambda d: -d["diff_mean"])
+    return out
+
+
+def paired_to_markdown(paired: List[Dict[str, Any]], metric: str, group_by: str) -> str:
+    if not paired:
+        return "_no paired comparisons_\n"
+    b = paired[0]["baseline"]
+    lines = [f"Paired by seed against **{b}** ({metric}; positive = better than baseline)\n",
+             f"| {group_by} | n | Δ mean | 95% CI of Δ | p (paired t) | wins / losses |",
+             "|---|---|---|---|---|---|"]
+    for d in paired:
+        ci = d["diff_ci95"]
+        ci_s = f"[{d['diff_mean'] - ci:+.4f}, {d['diff_mean'] + ci:+.4f}]" if ci == ci else "—"
+        p_s = f"{d['p_value']:.3f}" if d["p_value"] == d["p_value"] else "—"
+        lines.append(f"| {d[group_by]} | {d['n_paired']} | {d['diff_mean']:+.4f} | {ci_s} | {p_s} "
+                     f"| {d['wins']} / {d['losses']} |")
+    return "\n".join(lines) + "\n"
+
+
 def to_markdown(summary: List[Dict[str, Any]], metric: str, group_by: str) -> str:
     if not summary:
         return "_no finished runs_\n"
@@ -139,6 +207,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--metric", default="test_acc")
     p.add_argument("--group-by", default="group", choices=["group", "model", "variant", "sweep"])
     p.add_argument("--out", default=None, help="output prefix, e.g. results/baseline")
+    p.add_argument("--baseline", default=None,
+                   help="group to compare every other group against, paired by seed "
+                        "(e.g. 'tinyvgg|full')")
     args = p.parse_args(argv)
 
     rows = find_runs(args.roots)
@@ -148,9 +219,19 @@ def main(argv: Optional[List[str]] = None) -> int:
         statuses[r["status"] or "unknown"] = statuses.get(r["status"] or "unknown", 0) + 1
     print(f"{len(rows)} runs found ({', '.join(f'{k}={v}' for k, v in sorted(statuses.items()))})\n")
     print(to_markdown(summary, args.metric, args.group_by))
+    paired = None
+    if args.baseline:
+        paired = paired_comparison(rows, args.baseline, args.metric, args.group_by)
+        print(paired_to_markdown(paired, args.metric, args.group_by))
     if args.out:
         write_outputs(rows, summary, args.out, args.metric, args.group_by)
         print(f"wrote {args.out}_runs.csv, {args.out}_summary.csv, {args.out}_summary.md")
+        if paired is not None:
+            import pandas as pd
+            pd.DataFrame(paired).to_csv(f"{args.out}_paired.csv", index=False)
+            with open(f"{args.out}_paired.md", "w") as f:
+                f.write(paired_to_markdown(paired, args.metric, args.group_by))
+            print(f"wrote {args.out}_paired.csv, {args.out}_paired.md")
     return 0
 
 

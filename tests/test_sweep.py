@@ -146,3 +146,51 @@ class TestAggregate:
         _fake_run(root, "tinyvgg|b", "tinyvgg", 0, 0.7, variant="b")
         summary = ag.summarize(ag.find_runs([str(root)]), group_by="model")
         assert len(summary) == 1 and summary[0]["n"] == 2
+
+
+class TestPaired:
+    def _rows(self, tmp_path):
+        root = tmp_path / "runs"
+        base = [0.90, 0.92, 0.91, 0.93, 0.89]
+        for seed, acc in enumerate(base):
+            _fake_run(root, "m|full", "m", seed, acc, variant="full")
+            # consistently +0.01 better on every seed, despite large seed spread
+            _fake_run(root, "m|better", "m", seed, acc + 0.01, variant="better")
+        # only seeds 0-2 exist for this group -> pairs on 3 seeds
+        for seed in range(3):
+            _fake_run(root, "m|partial", "m", seed, base[seed] - 0.02, variant="partial")
+        return ag.find_runs([str(root)])
+
+    def test_consistent_small_gain_is_significant_when_paired(self, tmp_path):
+        rows = self._rows(tmp_path)
+        paired = {d["group"]: d for d in ag.paired_comparison(rows, "m|full")}
+        b = paired["m|better"]
+        assert b["n_paired"] == 5 and b["wins"] == 5 and b["losses"] == 0
+        assert b["diff_mean"] == pytest.approx(0.01)
+        assert b["diff_std"] == pytest.approx(0.0, abs=1e-12)  # identical shift -> p undefined
+        pt = paired["m|partial"]
+        assert pt["n_paired"] == 3 and pt["seeds"] == [0, 1, 2]
+        assert pt["diff_mean"] == pytest.approx(-0.02)
+
+    def test_p_value_matches_scipy(self, tmp_path):
+        scipy_stats = pytest.importorskip("scipy.stats")
+        root = tmp_path / "runs"
+        a = [0.90, 0.92, 0.91, 0.93, 0.89]
+        b = [0.905, 0.93, 0.912, 0.94, 0.893]
+        for seed in range(5):
+            _fake_run(root, "g|a", "g", seed, a[seed], variant="a")
+            _fake_run(root, "g|b", "g", seed, b[seed], variant="b")
+        d = ag.paired_comparison(ag.find_runs([str(root)]), "g|a")[0]
+        assert d["p_value"] == pytest.approx(scipy_stats.ttest_rel(b, a).pvalue)
+
+    def test_unknown_baseline_raises(self, tmp_path):
+        with pytest.raises(ValueError):
+            ag.paired_comparison(self._rows(tmp_path), "nope")
+
+    def test_cli_writes_paired_files(self, tmp_path, capsys):
+        self._rows(tmp_path)
+        out = tmp_path / "res" / "x"
+        assert ag.main([str(tmp_path / "runs"), "--baseline", "m|full", "--out", str(out)]) == 0
+        assert "Paired by seed" in capsys.readouterr().out
+        assert (tmp_path / "res" / "x_paired.md").exists()
+        assert (tmp_path / "res" / "x_paired.csv").exists()
