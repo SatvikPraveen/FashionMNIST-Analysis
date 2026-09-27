@@ -32,6 +32,7 @@ from src.evaluation.metrics import (
 )
 import json
 from src.models.architectures import ResNet, BasicBlock, MiniCNN, TinyVGG
+from src.models.registry import ModelSpec, build_from_spec, spec_path_for, resolve_name
 
 # Auto-select best available device (CUDA > MPS > CPU)
 device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
@@ -40,32 +41,42 @@ print(f"[INFO] Using device: {device}")
 # Load the pre-trained model
 def load_model(model_path, model_name="ResNet", num_classes=10):
     """
-    Load a pre-trained model and its weights.
+    Load a trained model and its weights.
+
+    If ``<model_path minus .pth>_spec.json`` exists (written by train.py) the
+    architecture is rebuilt from it, so any registry model (custom CNN or
+    timm backbone) can be evaluated. Otherwise ``model_name`` must be one of
+    the custom CNNs.
 
     Args:
-        model_path (str): Path to the pre-trained model weights.
-        model_name (str): Name of the model architecture ("ResNet", "TinyVGG", or "MiniCNN").
+        model_path (str): Path to the model weights.
+        model_name (str): Architecture name used when no spec file exists.
         num_classes (int): Number of output classes (default: 10).
 
     Returns:
         torch.nn.Module: Loaded model set to evaluation mode.
     """
-    name = model_name.lower()
-    if name == "resnet":
-        model = ResNet(BasicBlock, [2, 2, 2, 2], num_classes=num_classes)
-    elif name == "tinyvgg":
-        model = TinyVGG(in_channels=1, hidden_units=64, num_classes=num_classes)
-    elif name == "minicnn":
-        model = MiniCNN(in_channels=1, num_classes=num_classes)
+    spec_path = spec_path_for(model_path)
+    if os.path.exists(spec_path):
+        spec = ModelSpec.load(spec_path)
+        spec.pretrained = False  # weights come from the checkpoint
+        print(f"[INFO] Rebuilding '{spec.name}' from {spec_path}")
     else:
-        raise ValueError(f"Unknown model architecture: {model_name}. Choose from: ResNet, TinyVGG, MiniCNN")
-    
+        name = resolve_name(model_name)
+        if name not in ("resnet", "tinyvgg", "minicnn"):
+            raise ValueError(
+                f"No spec file at {spec_path}; without it only the custom CNNs "
+                f"(ResNet, TinyVGG, MiniCNN) can be rebuilt, got '{model_name}'")
+        spec = ModelSpec(name=name, num_classes=num_classes)
+    model = build_from_spec(spec)
+
     print(f"🔄 Loading model weights from {model_path}...")
-    model.load_state_dict(torch.load(model_path, map_location=device, weights_only= True))
+    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
     model.to(device)
     model.eval()
     print("✅ Model loaded successfully!")
     return model
+
 
 # Main function
 def main():

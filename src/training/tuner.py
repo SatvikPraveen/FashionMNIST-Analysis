@@ -99,12 +99,12 @@ def finetune_model(
             new_test_loader = test_loader
         
         # Create model
-        model = get_model(model_name, num_classes=10, in_channels=1)
+        model = get_model(model_name, num_classes=10, in_channels=1, config=config)
         
         # Load pretrained weights if provided
         if pretrained_path:
             logger.info(f"Loading pretrained weights from {pretrained_path}")
-            model.load_state_dict(torch.load(pretrained_path, map_location=device))
+            model.load_state_dict(torch.load(pretrained_path, map_location=device, weights_only=True))
         
         # Train
         history = train_model(
@@ -169,9 +169,8 @@ def main():
     parser.add_argument(
         "--model",
         type=str,
-        choices=["minicnn", "tinyvgg", "resnet"],
         required=True,
-        help="Model to fine-tune"
+        help="Model to fine-tune: minicnn, tinyvgg, resnet, or any timm id/alias"
     )
     parser.add_argument(
         "--output-dir",

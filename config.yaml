@@ -2,9 +2,14 @@
 
 # Model Configuration
 model:
-  architecture: "resnet" # Options: resnet, vit, efficientnet, minicnn, tinyvgg
+  # Custom CNNs: minicnn, tinyvgg, resnet
+  # timm backbones (any timm id or alias): resnet18, resnet50, efficientnet_b0,
+  #   convnext_tiny, vit_tiny, vit_small, deit_small, timm:<id>
+  architecture: "resnet"
   num_classes: 10
-  pretrained: true
+  pretrained: true       # ImageNet weights for timm backbones (ignored by custom CNNs)
+  image_size: null       # Input res for timm backbones; null = 64 for CNNs, 224 for ViT-style
+  drop_rate: 0.0         # Dropout before the classifier (timm backbones)
   device: "auto" # auto, cuda, cpu, mps
 
 # Transfer Learning Configuration

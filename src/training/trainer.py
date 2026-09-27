@@ -32,6 +32,9 @@ from src.config.settings import load_config
 from src.data.dataset import create_dataloaders, get_default_transforms
 from src.data.augmentation import AugmentationPipeline, Mixup, CutMix
 from src.models.architectures import MiniCNN, TinyVGG, ResNet, BasicBlock
+from src.models.registry import (
+    build_from_spec, model_spec_from_config, resolve_name, spec_path_for, CUSTOM_MODELS
+)
 from src.training.reproducibility import set_seed
 from src.training.utils import (
     get_device,
@@ -101,28 +104,33 @@ class EarlyStopping:
         return False
 
 
-def get_model(model_name: str, num_classes: int = 10, in_channels: int = 1) -> nn.Module:
+def get_model(model_name: str, num_classes: int = 10, in_channels: int = 1,
+              config=None) -> nn.Module:
     """
-    Get model by name.
-    
+    Build a model by name via the registry.
+
+    ``minicnn`` / ``tinyvgg`` / ``resnet`` are the custom CNNs. Anything else
+    (``resnet18``, ``efficientnet_b0``, ``vit_tiny``, ``timm:<id>`` ...) is a
+    timm backbone; ``config`` supplies pretrained / image_size / freeze flags.
+
     Args:
-        model_name (str): Model architecture name
+        model_name (str): Model architecture name or alias
         num_classes (int): Number of output classes
-        in_channels (int): Number of input channels (1 for grayscale, 3 for RGB)
-        
+        in_channels (int): Number of input channels (1 for grayscale)
+        config: Project Config; when None, timm models are random-init
+
     Returns:
-        Model instance
+        Model instance (also carries ``model.spec`` for checkpoint metadata)
     """
-    model_name = model_name.lower()
-    
-    if model_name == "minicnn":
-        return MiniCNN(in_channels=in_channels, num_classes=num_classes)
-    elif model_name == "tinyvgg":
-        return TinyVGG(in_channels=in_channels, hidden_units=64, num_classes=num_classes)
-    elif model_name == "resnet":
-        return ResNet(BasicBlock, [2, 2, 2, 2], num_classes=num_classes)
+    if config is not None:
+        spec = model_spec_from_config(model_name, config, num_classes=num_classes)
     else:
-        raise ValueError(f"Unknown model: {model_name}. Choose from: minicnn, tinyvgg, resnet")
+        from src.models.registry import ModelSpec
+        spec = ModelSpec(name=resolve_name(model_name), num_classes=num_classes,
+                         in_channels=in_channels)
+    model = build_from_spec(spec)
+    model.spec = spec
+    return model
 
 
 def train_epoch_with_augmentation(
@@ -381,6 +389,8 @@ def train_model(
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             torch.save(model.state_dict(), best_model_path)
+            if getattr(model, "spec", None) is not None:
+                model.spec.save(spec_path_for(best_model_path))
             logger.info(f"   💾 Saved best model (val_acc: {val_acc:.4f})")
 
         # Early stopping check (monitors val_acc)
@@ -419,9 +429,36 @@ def main():
     parser.add_argument(
         "--model",
         type=str,
-        choices=["minicnn", "tinyvgg", "resnet", "all"],
-        default="all",
-        help="Model to train (default: all)"
+        nargs="+",
+        default=["all"],
+        help=("Model(s) to train. Custom CNNs: minicnn, tinyvgg, resnet; "
+              "'all' = those three. Any timm id or alias also works: "
+              "resnet18, resnet50, efficientnet_b0, convnext_tiny, vit_tiny, "
+              "deit_small, timm:<id>. (default: all)")
+    )
+    parser.add_argument(
+        "--pretrained",
+        dest="pretrained",
+        action="store_true",
+        default=None,
+        help="Use ImageNet weights for timm models (overrides model.pretrained)"
+    )
+    parser.add_argument(
+        "--no-pretrained",
+        dest="pretrained",
+        action="store_false",
+        help="Random-init timm models"
+    )
+    parser.add_argument(
+        "--image-size",
+        type=int,
+        default=None,
+        help="Input resolution for timm backbones (overrides model.image_size)"
+    )
+    parser.add_argument(
+        "--freeze-backbone",
+        action="store_true",
+        help="Train only the classifier head of a timm backbone"
     )
     parser.add_argument(
         "--output-dir",
@@ -474,6 +511,24 @@ def main():
         default=None,
         help="DataLoader worker processes (overrides data.num_workers in config)"
     )
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=None,
+        help="Override training.epochs from config"
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=None,
+        help="Override training.batch_size from config"
+    )
+    parser.add_argument(
+        "--lr",
+        type=float,
+        default=None,
+        help="Override training.learning_rate from config"
+    )
     
     args = parser.parse_args()
     
@@ -488,6 +543,22 @@ def main():
     set_seed(seed, deterministic=deterministic)
 
     num_workers = args.num_workers if args.num_workers is not None else int(config.get('data.num_workers', 0))
+
+    # Training overrides from the CLI
+    if args.epochs is not None:
+        config.set('training.epochs', int(args.epochs))
+    if args.batch_size is not None:
+        config.set('training.batch_size', int(args.batch_size))
+    if args.lr is not None:
+        config.set('training.learning_rate', float(args.lr))
+
+    # Model-family overrides from the CLI
+    if args.pretrained is not None:
+        config.set('model.pretrained', bool(args.pretrained))
+    if args.image_size is not None:
+        config.set('model.image_size', int(args.image_size))
+    if args.freeze_backbone:
+        config.set('transfer_learning.freeze_backbone', True)
     
     # Get device
     device = print_device_info() if not args.force_cpu else get_device(force_cpu=True)
@@ -521,18 +592,21 @@ def main():
     logger.info(f"   Val batches: {len(val_loader)}")
     logger.info(f"   Test batches: {len(test_loader)}")
     
-    # Determine which models to train
-    if args.model == "all":
-        models_to_train = ["minicnn", "tinyvgg", "resnet"]
-    else:
-        models_to_train = [args.model]
+    # Determine which models to train ('all' expands to the custom CNNs)
+    models_to_train = []
+    for name in args.model:
+        if name.lower() == "all":
+            models_to_train.extend(CUSTOM_MODELS)
+        else:
+            models_to_train.append(resolve_name(name))
+    models_to_train = list(dict.fromkeys(models_to_train))  # dedupe, keep order
     
     # Training results
     all_results = {}
     
     # Train each model
     for model_name in models_to_train:
-        model = get_model(model_name, num_classes=10)
+        model = get_model(model_name, num_classes=10, config=config)
         
         history = train_model(
             model=model,
@@ -582,9 +656,16 @@ def main():
     os.makedirs(best_dest_dir, exist_ok=True)
     import shutil
     shutil.copy2(best_src_path, best_dest_path)
+    best_spec_src = spec_path_for(best_src_path)
+    best_spec = None
+    if os.path.exists(best_spec_src):
+        shutil.copy2(best_spec_src, spec_path_for(best_dest_path))
+        with open(best_spec_src) as f:
+            best_spec = json.load(f)
 
     best_info = {
         "model_name":   best_name,
+        "model_spec":   best_spec,
         "seed":         seed,
         "best_val_acc": best_val_acc,
         "test_acc":     best_test_acc,

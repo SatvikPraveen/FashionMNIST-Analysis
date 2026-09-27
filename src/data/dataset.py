@@ -239,7 +239,7 @@ def create_dataloaders(
             test_dataset = None
     
     # Create dataloaders
-    loader_kwargs = dict(num_workers=num_workers, pin_memory=True,
+    loader_kwargs = dict(num_workers=num_workers, pin_memory=torch.cuda.is_available(),
                          worker_init_fn=seed_worker if num_workers > 0 else None,
                          persistent_workers=num_workers > 0)
     if train_dataset:
