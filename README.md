@@ -1,4 +1,4 @@
-# # 🎨 **Fashion MNIST Analysis** 🧥👕👗👟
+# Fashion-MNIST Analysis
 
 ![Tests](https://github.com/SatvikPraveen/FashionMNIST-Analysis/actions/workflows/tests.yml/badge.svg)
 ![MIT License](https://img.shields.io/github/license/SatvikPraveen/FashionMNIST-Analysis)
@@ -9,21 +9,21 @@
 
 > An in-depth exploration of fashion item classification using the Fashion MNIST dataset.
 
-Welcome to the **Fashion MNIST Analysis** project, where we dive deep into data exploration, model training, and fine-tuning to classify fashion items with **state-of-the-art techniques**.
+This project covers data exploration, classical baselines, CNN training and fine-tuning for classifying Fashion-MNIST images.
 
 ---
 
-## **Overview**
+## Overview
 
 This project focuses on analyzing the **Fashion MNIST** dataset using various Convolutional Neural Networks (CNNs), including **MiniCNN**, **TinyVGG**, and **ResNet**. The models were trained with a production-ready pipeline featuring correct Fashion-MNIST normalization, val_acc-based early stopping, and automatic best-model selection. **TinyVGG** achieved the highest performance across all three architectures.
 
 ---
 
-## **Key Features**
+## Key Features
 
 - **Traditional Machine Learning Models**: Classification using **Random Forest**, **k-Nearest Neighbors**, and **XGBoost**, combined with dimensionality reduction techniques like PCA, t-SNE, and UMAP.
 - **Custom Baseline Models**: Implementation of lightweight **MiniCNN**, **TinyVGG**, and **ResNet** architectures.
-- **Fine-Tuning Pipeline**: A robust pipeline to tune hyperparameters such as learning rates, batch sizes, and early stopping patience values.
+- **Fine-Tuning Pipeline**: A pipeline to tune hyperparameters such as learning rates, batch sizes, and early stopping patience values.
 - **Visualization Tools**:
   - Confusion matrices for baseline and fine-tuned models.
   - Sample predictions for visual validation.
@@ -32,7 +32,7 @@ This project focuses on analyzing the **Fashion MNIST** dataset using various Co
 
 ---
 
-## **Project Structure**
+## Project Structure
 
 ```bash
 FashionMNIST-Analysis/
@@ -74,7 +74,7 @@ FashionMNIST-Analysis/
 
 ---
 
-### **Description of Key Components**
+### Description of Key Components
 
 - **`data/`**: Directory for storing raw data.
 - **`data_preparation/`**: Processed CSV files for training, validation, and testing datasets.
@@ -115,30 +115,30 @@ FashionMNIST-Analysis/
 
 Below are the 10 class labels for the Fashion MNIST dataset:
 
-| **Class Label** | **Examples** |
-| --------------- | ------------ |
-| T-shirt/top     | 👕           |
-| Trouser         | 👖           |
-| Pullover        | 🧥           |
-| Dress           | 👗           |
-| Coat            | 🧥           |
-| Sandal          | 🩴           |
-| Shirt           | 👔           |
-| Sneaker         | 👟           |
-| Bag             | 👜           |
-| Ankle Boot      | 🥾           |
+| Label | Class |
+| ----- | ----------- |
+| 0 | T-shirt/top |
+| 1 | Trouser |
+| 2 | Pullover |
+| 3 | Dress |
+| 4 | Coat |
+| 5 | Sandal |
+| 6 | Shirt |
+| 7 | Sneaker |
+| 8 | Bag |
+| 9 | Ankle Boot |
 
 ---
 
-## **Steps in the Workflow**
+## Steps in the Workflow
 
-### **1. Exploratory Data Analysis**
+### 1. Exploratory Data Analysis
 
 - Distribution of labels.
 - Sample image visualizations.
 - Data normalization and preprocessing.
 
-### **2. Traditional Machine Learning**
+### 2. Traditional Machine Learning
 
 - Models Used:
   - **Random Forest**
@@ -153,7 +153,7 @@ Below are the 10 class labels for the Fashion MNIST dataset:
 - **Evaluation Metrics**:
   - Confusion matrices, accuracy, and classification reports for each model.
 
-### **3. CNN Baseline Modeling**
+### 3. CNN Baseline Modeling
 
 - Architectures implemented:
   - **MiniCNN**: A lightweight custom CNN.
@@ -162,7 +162,7 @@ Below are the 10 class labels for the Fashion MNIST dataset:
 - **Evaluation Metrics**:
   - Accuracy, Precision, Recall, F1-score for all models.
 
-### **4. Fine-Tuning**
+### 4. Fine-Tuning
 
 - **Hyperparameter Grid**:
   - Learning Rates: `[1e-5, 5e-6]`
@@ -171,19 +171,19 @@ Below are the 10 class labels for the Fashion MNIST dataset:
 - **Best Model Selection**:
   - **TinyVGG** achieved the highest test accuracy (**93.21%**) and was automatically saved to `models/best_model_weights/`.
 
-### **5. Evaluation**
+### 5. Evaluation
 
 - Confusion matrix and prediction visualization for the best model (TinyVGG).
 - **Evaluation Metrics**:
   - MiniCNN test accuracy: **89.93%**
   - ResNet test accuracy: **91.46%**
-  - **TinyVGG test accuracy: 93.21%** ✅ Best
+  - **TinyVGG test accuracy: 93.21%** (best)
 - **Visualization**:
   - Sample predictions from the best TinyVGG model.
 
 ---
 
-## **Key Visualizations**
+## Key Visualizations
 
 ### Confusion Matrix - Best Model (TinyVGG, 93.21% test accuracy)
 
@@ -197,7 +197,7 @@ Sample predictions from the best TinyVGG model:
 
 ---
 
-## **Results**
+## Results
 
 | Metric        | MiniCNN | ResNet | **TinyVGG (Best)** |
 | ------------- | ------- | ------ | ------------------ |
@@ -215,18 +215,18 @@ Sample predictions from the best TinyVGG model:
 
 ---
 
-## **🆕 New Features (2026)**
+## Updates (2026)
 
-### **Production-Ready Training Pipeline**
+### Training Pipeline
 
-- ✅ **End-to-End CLI Scripts**: `train.py`, `finetune.py`, `prepare_data.py`
-- ✅ **Data Augmentation**: Mixup, CutMix, RandomErasing, torchvision transforms - fully integrated!
-- ✅ **Multi-Device Support**: Auto-detects CUDA, MPS (Apple Silicon M1/M2/M3), or CPU
-- ✅ **Config-Driven**: All parameters in `config.yaml` for reproducibility
-- ✅ **Model Checkpointing**: Saves best models automatically with early stopping
-- ✅ **Comprehensive Logging**: Training history, metrics tracking, JSON outputs
+- **End-to-End CLI Scripts**: `train.py`, `finetune.py`, `prepare_data.py`
+- **Data Augmentation**: Mixup, CutMix, RandomErasing, torchvision transforms
+- **Multi-Device Support**: Auto-detects CUDA, MPS (Apple Silicon M1/M2/M3), or CPU
+- **Config-Driven**: All parameters in `config.yaml` for reproducibility
+- **Model Checkpointing**: Saves best models automatically with early stopping
+- **Logging**: Training history, metrics tracking, JSON outputs
 
-### **Quick Start - New Pipeline**
+### Quick Start - New Pipeline
 
 ```bash
 # 1. Prepare data
@@ -250,11 +250,11 @@ python src/cli/finetune.py \
   --pretrained models/best_model_weights/best_model_weights.pth
 ```
 
-**📖 See [USAGE_GUIDE.md](docs/USAGE_GUIDE.md) for complete instructions**
+**See [USAGE_GUIDE.md](docs/USAGE_GUIDE.md) for complete instructions**
 
 ---
 
-## **🔬 Research Pipeline (2026-09)**
+## Research Pipeline (2026-09)
 
 The training stack was upgraded from a single-run demo to a reproducible,
 cluster-ready experiment pipeline. Everything below is covered by the
@@ -294,7 +294,7 @@ The study design (questions, sweeps, protocol, compute estimates) is in
 
 ---
 
-## **How to Run**
+## How to Run
 
 ### Environment Setup
 
@@ -338,7 +338,7 @@ Follow these steps to set up the project on your local machine:
    python setup_project.py
    ```
 
-## **Execution**
+## Execution
 
 - **Exploratory Data Analysis**: `eda.ipynb`
 - **Traditional ML Algorithms**:`Traditional_ML_Algo.ipynb`
@@ -348,9 +348,9 @@ Follow these steps to set up the project on your local machine:
 
 ---
 
-## **Evaluating the Model**
+## Evaluating the Model
 
-### **Using the `evaluate.py` CLI**
+### Using the `evaluate.py` CLI
 
 Evaluates the best model. Architecture is auto-detected from `models/best_model_weights/best_model_info.json`.
 
@@ -361,7 +361,7 @@ Evaluates the best model. Architecture is auto-detected from `models/best_model_
   - `predictions_vector.csv`
   - `evaluation_metrics.csv`
 
-#### **Command to Run**
+#### Command to Run
 
 ```bash
 python src/cli/evaluate.py \
@@ -379,7 +379,7 @@ Any checkpoint written by `train.py` carries a `_spec.json`, so timm backbones e
 
 ---
 
-## **Technologies Used**
+## Technologies Used
 
 - **Core Libraries**: NumPy, Pandas, Matplotlib, Seaborn, SciPy
 
@@ -410,7 +410,7 @@ Any checkpoint written by `train.py` carries a `_spec.json`, so timm backbones e
 
 ---
 
-## **Acknowledgments**
+## Acknowledgments
 
 This project is inspired by the Fashion MNIST dataset provided by Zalando Research. Special thanks to open-source contributors of **PyTorch** and **Scikit-learn** for enabling this work.
 
@@ -431,9 +431,9 @@ To explore the different stages of the project workflow, you can access the foll
 
 You can access the full repository [here](https://github.com/SatvikPraveen/FashionMNIST-Analysis).
 
-## **Documentation**
+## Documentation
 
-For comprehensive guides and documentation, please refer to the `docs/` folder:
+For guides and documentation, please refer to the `docs/` folder:
 
 - **[RESEARCH_PLAN.md](docs/RESEARCH_PLAN.md)** - Research questions, sweeps, evaluation protocol and compute plan.
 - **[cluster/README.md](cluster/README.md)** - Running sweeps as SLURM job arrays.
@@ -445,7 +445,7 @@ For comprehensive guides and documentation, please refer to the `docs/` folder:
 
 ---
 
-## **Future Work**
+## Future Work
 
 - Run the four sweeps in `sweeps/` on a GPU cluster and replace the single-seed results table with mean ± CI numbers.
 - Drive `src/models/ensemble.py` from a sweep (ensemble of seeds per architecture).
@@ -455,10 +455,7 @@ For comprehensive guides and documentation, please refer to the `docs/` folder:
 
 ---
 
-## **License**
+## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
----
-
-### **Let’s Classify Fashion Together!** 👕👗🧥👠👟
