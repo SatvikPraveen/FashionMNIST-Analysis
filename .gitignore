@@ -111,3 +111,6 @@ runs/
 
 # Site-specific cluster scripts and notes (partition, QOS, paths) stay local
 cluster/local/
+
+# Aggregation output written on the cluster; copied into results/sweeps/ from the laptop
+results/cluster/
