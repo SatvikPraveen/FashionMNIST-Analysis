@@ -680,19 +680,19 @@ def main(argv=None):
     parser.add_argument(
         "--train-csv",
         type=str,
-        default="./data_preparation/fashion_mnist_train.csv",
+        default="./data/processed/fashion_mnist_train.csv",
         help="Path to training CSV"
     )
     parser.add_argument(
         "--val-csv",
         type=str,
-        default="./data_preparation/fashion_mnist_val.csv",
+        default="./data/processed/fashion_mnist_val.csv",
         help="Path to validation CSV"
     )
     parser.add_argument(
         "--test-csv",
         type=str,
-        default="./data_preparation/fashion_mnist_test.csv",
+        default="./data/processed/fashion_mnist_test.csv",
         help="Path to test CSV"
     )
     parser.add_argument(

@@ -61,8 +61,8 @@ augmentation:
   rotation: 10              # RandomRotation degrees (±) — mild
   horizontal_flip: true     # RandomHorizontalFlip
   vertical_flip: false      # RandomVerticalFlip (not useful for clothing)
-  random_crop: true         # RandomCrop with padding — standard for FMNIST
-  random_crop_padding: 4    # Pixels of zero-padding before crop
+  random_crop: true         # Padded random crop; helps ResNet, hurts MiniCNN/TinyVGG (see README)
+  random_crop_padding: 4    # Pixels of padding (filled with augmentation.fill) before the crop
   random_affine: false      # Disabled — too aggressive for 28x28
   zoom: 0.1                 # (kept for reference, unused when random_affine: false)
 

@@ -1,348 +1,259 @@
-# Usage Guide - FashionMNIST-Analysis
+# Usage guide
 
-Complete guide for using the new training pipeline with data augmentation and device support.
+How to do each common task. Every flag of every tool is listed in the
+[command-line reference](CLI_REFERENCE.md), which is generated from the tools
+themselves. What each module offers is in the [feature guide](FEATURES.md).
 
----
+## Contents
 
-## 🚀 Quick Start
+1. [Set up](#set-up)
+2. [Prepare the data](#prepare-the-data)
+3. [Train](#train)
+4. [Evaluate one model](#evaluate-one-model)
+5. [Run a study with several seeds](#run-a-study-with-several-seeds)
+6. [Serve a model](#serve-a-model)
+7. [Configuration](#configuration)
+8. [Where outputs go](#where-outputs-go)
+9. [Troubleshooting](#troubleshooting)
 
-### 1. Prepare Data
-
-```bash
-# Download and prepare FashionMNIST dataset
-python src/cli/prepare_data.py --output-dir data/processed
-
-# Options:
-python src/cli/prepare_data.py \
-    --data-dir ./data \
-    --output-dir ./data/processed \
-    --train-split 0.8 \
-    --seed 42
-```
-
-### 2. Train Models  
+## Set up
 
 ```bash
-# Train all models (MiniCNN, TinyVGG, ResNet)
-python src/cli/train.py --model all
-
-# Train specific model
-python src/cli/train.py --model resnet
-
-# Use CSV data instead of torchvision
-python src/cli/train.py --model minicnn --use-csv \
-    --train-csv data/processed/fashion_mnist_train.csv \
-    --val-csv data/processed/fashion_mnist_val.csv \
-    --test-csv data/processed/fashion_mnist_test.csv
-```
-
-### 3. Fine-tune with Hyperparameter Search
-
-```bash
-# Fine-tune ResNet with grid search
-python src/cli/finetune.py --model resnet \
-    --pretrained models/all_models/resnet/resnet_best.pth \
-    --learning-rates 1e-5 5e-6 \
-    --batch-sizes 32 64 \
-    --patience-values 2 3
-
-# Quick test with single set of hyperparameters
-python src/cli/finetune.py --model minicnn \
-    --learning-rates 1e-4 \
-    --batch-sizes 32 \
-    --patience-values 2
-```
-
-### 4. Evaluate Best Model
-
-```bash
-# Evaluate model on test set
-python src/cli/evaluate.py \
-    --model_path models/all_models/resnet/resnet_best.pth \
-    --test_csv data/processed/fashion_mnist_test.csv \
-    --test_dir results/evaluation
-```
-
----
-
-## 🔬 Research flags (added 2026-09)
-
-`train.py` gained the following; every flag also has a `config.yaml` key.
-
-| flag | effect |
-|---|---|
-| `--model NAME [NAME ...]` | custom CNNs (`minicnn`, `tinyvgg`, `resnet`, `all`) **or any timm id / alias** (`resnet18`, `efficientnet_b0`, `convnext_tiny`, `vit_tiny`, `timm:<id>`) |
-| `--pretrained` / `--no-pretrained`, `--image-size N`, `--freeze-backbone` | timm backbone options |
-| `--seed N`, `--deterministic` | reproducibility (`training.seed`, `training.deterministic`) |
-| `--epochs`, `--batch-size`, `--lr`, `--num-workers` | quick overrides |
-| `--amp`, `--compile` | bf16/fp16 autocast, `torch.compile` (CUDA) |
-| `--resume` | continue from `<out>/<model>/<model>_last.pt` (scheduler is rebuilt for the current epoch budget) |
-| `--set KEY=VALUE` (repeatable) | override *any* config key, e.g. `--set augmentation.mixup=false` |
-| `--run-name`, `--mlflow`, `--wandb` | experiment naming / mirrors (files are always written) |
-| `--skip-best-selection` | don't copy to `models/best_model_weights/` (used by sweeps) |
-
-Each run directory contains `run.json`, `metrics.jsonl`, `<model>_best.pth`,
-`<model>_best_spec.json` and `<model>_last.pt`.
-
-Sweeps: `python src/cli/sweep.py {expand,run,status} sweeps/<name>.yaml`;
-aggregation: `python src/cli/aggregate.py runs/<name> --out results/<name>`;
-analysis: `python src/cli/evaluate.py ... --analysis --val_csv data/processed/fashion_mnist_val.csv`.
-See `cluster/README.md` for SLURM.
-
-## 📋 Command Reference
-
-### prepare_data.py
-
-```bash
-python src/cli/prepare_data.py [options]
-
-Options:
-  --data-dir DIR          Raw data directory (default: ./data)
-  --output-dir DIR        Output CSV directory (default: ./data_preparation)
-  --train-split FLOAT     Train/val split ratio (default: 0.8)
-  --no-csv                Skip CSV conversion (only download)
-  --seed INT              Random seed (default: 42)
-```
-
-### train.py
-
-```bash
-python src/cli/train.py [options]
-
-Options:
-  --config FILE           Config file path (default: config.yaml)
-  --model {minicnn,tinyvgg,resnet,all}
-                          Model to train (default: all)
-  --output-dir DIR        Output directory (default: ./models/all_models)
-  --use-csv               Use CSV datasets instead of torchvision
- --train-csv FILE        Path to training CSV (if --use-csv)
-  --val-csv FILE          Path to validation CSV (if --use-csv)
-  --test-csv FILE         Path to test CSV (if --use-csv)
-  --force-cpu             Force CPU usage (disable GPU/MPS)
-```
-
-### finetune.py
-
-```bash
-python src/cli/finetune.py [options]
-
-Options:
-  --config FILE           Config file path (default: config.yaml)
-  --model {minicnn,tinyvgg,resnet}
-                          Model to fine-tune (required)
-  --output-dir DIR        Results directory (default: ./results/fine_tuning_results)
-  --pretrained FILE       Path to pretrained weights (optional)
-  --learning-rates LR...  Learning rates to try (default: 1e-5 5e-6)
-  --batch-sizes BS...     Batch sizes to try (default: 32 64)
-  --patience-values P...  Patience values to try (default: 2 3)
-  --force-cpu             Force CPU usage
-```
-
----
-
-## ⚙️ Configuration (config.yaml)
-
-All training parameters are centralized in `config.yaml`:
-
-### Training Configuration
-
-```yaml
-training:
-  epochs: 50                    # Number of training epochs
-  batch_size: 32                # Batch size
-  learning_rate: 1e-3           # Initial learning rate
-  weight_decay: 1e-4            # L2 regularization
-  optimizer: "adam"             # adam or sgd
-  scheduler: "cosine"           # cosine, step, exponential, none
-  early_stopping_patience: 5    # Early stopping patience
-```
-
-### Data Augmentation
-
-```yaml
-augmentation:
-  enabled: true                 # Enable/disable augmentation
-  strategy: "advanced"          # basic, advanced, custom
-  rotation: 15                  # Random rotation degrees
-  zoom: 0.2                     # Random zoom factor
-  horizontal_flip: true         # Random horizontal flip
-  vertical_flip: false          # Random vertical flip
-  cutmix: true                  # Enable CutMix
-  cutmix_alpha: 1.0             # CutMix alpha parameter
-  mixup: true                   # Enable Mixup
-  mixup_alpha: 0.2              # Mixup alpha parameter
-```
-
----
-
-## 🖥️ Device Support
-
-The pipeline automatically detects the best available device:
-
-| Priority | Device | Description |
-|----------|--------|-------------|
-| 1 | **CUDA** | NVIDIA GPU (highest performance) |
-| 2 | **MPS** | Apple Silicon M1/M2/M3 (MacBook Pro) |
-| 3 | **CPU** | Fallback for all systems |
-
-### Force CPU Usage
-
-```bash
-python src/cli/train.py --model resnet --force-cpu
-```
-
----
-
-## 📊 Output Structure
-
-After training, you'll have:
-
-```
-models/all_models/
-├── minicnn/
-│   ├── minicnn_best.pth           # Best MiniCNN model weights
-│   └── minicnn_history.json       # Training history
-├── tinyvgg/
-│   ├── tinyvgg_best.pth           # Best TinyVGG model weights
-│   └── tinyvgg_history.json       # Training history
-└── resnet/
-    ├── resnet_best.pth            # Best ResNet model weights
-    └── resnet_history.json        # Training history
-
-results/fine_tuning_results/
-├── resnet_bs32_lr1e-05_pat2.pth
-├── resnet_bs32_lr1e-05_pat3.pth
-├── ...
-└ resnet_finetuning_results.json  # All results summary
-
-results/evaluation/
-├── predictions_vector.csv
-├── evaluation_metrics.csv
-├── Best_ResNet_confusion_matrix.png
-└── prediction_visualization.png
-```
-
----
-
-## 💡 Usage Examples
-
-### Example 1: Full Training Pipeline
-
-```bash
-# 1. Prepare data
-python src/cli/prepare_data.py
-
-# 2. Train all models (will take ~30-60 minutes)
-python src/cli/train.py --model all
-
-# 3. Fine-tune best model
-python src/cli/finetune.py --model resnet \
-    --pretrained models/all_models/resnet/resnet_best.pth
-
-# 4. Evaluate
-python src/cli/evaluate.py \
-    --model_path models/all_models/resnet/resnet_best.pth \
-    --test_csv data/processed/fashion_mnist_test.csv
-```
-
-### Example 2: Quick Test (5 minutes)
-
-```bash
-# Modify config.yaml: Set epochs: 2
-
-# Train single model
-python src/cli/train.py --model minicnn
-
-# Check results
-cat models/all_models/minicnn/minicnn_history.json
-```
-
-### Example 3: Use Pre-existing CSV Data
-
-```bash
-# Train using existing CSV files
-python src/cli/train.py --model resnet --use-csv \
-    --train-csv path/to/train.csv \
-    --val-csv path/to/val.csv \
-    --test-csv path/to/test.csv
-```
-
----
-
-## 🔧 Troubleshooting
-
-### Issue: Out of Memory (OOM)
-
-**Solution**: Reduce batch size in `config.yaml`:
-```yaml
-training:
-  batch_size: 16  # Reduce from 32
-```
-
-### Issue: Training too slow on CPU
-
-**Solution**: Use smaller model or reduce epochs:
-```bash
-python src/cli/train.py --model minicnn  # Faster than ResNet
-```
-
-Or modify `config.yaml`:
-```yaml
-training:
-  epochs: 10  # Reduce from 50
-```
-
-### Issue: MPS not detected on MacBook Pro
-
-**Solution**: Ensure PyTorch 2.0+ is installed:
-```bash
-python -c "import torch; print(torch.__version__)"
-pip install --upgrade torch torchvision
-```
-
-### Issue: Import errors
-
-**Solution**: Install dependencies:
-```bash
+git clone https://github.com/SatvikPraveen/FashionMNIST-Analysis.git
+cd FashionMNIST-Analysis
+python -m venv venv && source venv/bin/activate      # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+pytest tests/ -q
 ```
 
----
+`requirements.txt` includes the notebooks, apps and serving stack. For
+training only (for example on a cluster), install PyTorch for your CUDA version
+and then `pip install -r cluster/requirements-cluster.txt`.
 
-## 📈 Expected Results
+The device is chosen automatically: CUDA, then Apple MPS, then CPU. Add
+`--force-cpu` to `train.py` to override it.
 
-With default configuration (50 epochs, augmentation enabled):
+## Prepare the data
 
-| Model | Val Accuracy | Test Accuracy | Parameters | Training Time (MPS) |
-|-------|-------------|---------------|------------|---------------------|
-| MiniCNN | ~88-90% | ~87-89% | 106K | ~10 min |
-| TinyVGG | ~89-91% | ~88-90% | 125K | ~12 min |
-| ResNet | ~92-94% | ~91-93% | 6.5M | ~25 min |
+```bash
+python src/cli/prepare_data.py
+```
 
-After fine-tuning:
-- **ResNet**: ~93-95% test accuracy
-- **TinyVGG**: ~90-92% test accuracy
-- **MiniCNN**: ~89-91% test accuracy
+This downloads Fashion-MNIST to `data/` and writes seeded
+`fashion_mnist_{train,val,test}.csv` files to `data/processed/`: 48,000
+training and 12,000 validation images from the official training set, and the
+official 10,000-image test set. The evaluator reads these CSVs. Training does
+not need them: by default it reads the torchvision copy and makes its own
+seeded train/validation split (`--use-csv` trains on the CSV split instead).
+The two splits are different, which matters for temperature scaling below.
 
----
+## Train
 
-## 🎓 Tips for Best Results
+```bash
+# the three custom CNNs; the best one is copied to models/best_model_weights/
+python src/cli/train.py --model all --seed 0
 
-1. **Use data augmentation**: Keep `augmentation.enabled: true` in config.yaml
-2. **Early stopping**: Prevents overfitting, saves training time
-3. **Learning rate**: Start with 1e-3, reduce to 1e-5 for fine-tuning
-4. **Batch size**: 32 is a good default, try 64 if you have more memory
-5. **Device**: Use MPS (Apple Silicon) or CUDA (NVIDIA) for 5-10x speedup
+# one model, with mixed precision on a GPU
+python src/cli/train.py --model resnet --seed 0 --amp
 
----
+# an ImageNet-pretrained backbone from timm (any timm id works, or an alias)
+python src/cli/train.py --model vit_tiny --pretrained --epochs 30 --lr 3e-4 --set training.optimizer=adamw
 
-## 🚀 Next Steps
+# train only the classifier head of a pretrained backbone
+python src/cli/train.py --model convnext_tiny --pretrained --freeze-backbone --epochs 10
+```
 
-1. **Experiment with augmentation**: Modify `config.yaml` augmentation settings
-2. **Try transfer learning**: Use `scripts/` with Vision Transformer or EfficientNet
-3. **Ensemble models**: Combine predictions from multiple models
-4. **Deploy**: Use Gradio/Streamlit apps in `apps/` folder
+**Change any setting for one run** with `--set KEY=VALUE`, where the key is a
+path in `config.yaml` and the value is parsed as YAML. For example, the best
+recipe found for the small CNNs drops random cropping:
 
----
+```bash
+python src/cli/train.py --model tinyvgg --set augmentation.random_crop=false
+python src/cli/train.py --model tinyvgg --set training.label_smoothing=0.1 --set augmentation.mixup=false
+```
 
-**Questions?** Check the main README or open an issue on GitHub!
+**Reproducibility.** `--seed` fixes model initialisation, data order, the
+train/validation split and augmentation. `--deterministic` additionally forces
+deterministic GPU kernels, which is slower and only needed for bit-exact
+reruns.
+
+**Resume.** Every epoch writes `<model>_last.pt`. Re-running the same command
+with `--resume` continues from the last completed epoch, and a larger
+`--epochs` extends the run with the learning-rate schedule rebuilt for the new
+budget.
+
+**Tracking.** Every run writes `run.json` and `metrics.jsonl` (see
+[Where outputs go](#where-outputs-go)). Add `--mlflow` or `--wandb` to mirror
+them to those services if installed.
+
+`src/cli/finetune.py` runs a small sequential grid over learning rate, batch
+size and patience on one machine. For anything larger, use a sweep instead.
+
+## Evaluate one model
+
+```bash
+python src/cli/evaluate.py \
+  --model_path models/best_model_weights/best_model_weights.pth \
+  --test_csv   data/processed/fashion_mnist_test.csv
+```
+
+This writes accuracy, precision, recall and F1, predictions, a confusion
+matrix and a grid of example predictions. The architecture is read from the
+checkpoint's `_spec.json`, or from `best_model_info.json` for the shipped best
+model, so timm backbones evaluate the same way as the custom CNNs.
+
+Add the full analysis with:
+
+```bash
+python src/cli/evaluate.py \
+  --model_path runs/baseline_fixed/tinyvgg_seed0/tinyvgg/tinyvgg_best.pth \
+  --test_csv   data/processed/fashion_mnist_test.csv \
+  --val_csv    data/processed/fashion_mnist_val.csv --analysis
+```
+
+`--analysis` adds calibration (ECE, NLL, Brier, and temperature scaling
+fitted on `--val_csv`), per-class metrics, and accuracy under seven
+corruptions at five severities, with figures and an `analysis.json`.
+`--no_robustness` skips the corruption sweep, which is the slow part on a CPU.
+
+The temperature must be fitted on images the model did not train on. The CSV
+validation set is only held out for models trained with `--use-csv`; for
+models trained on the default torchvision split it overlaps their training
+data. For those, use `src/cli/analyze_runs.py`, which rebuilds each run's
+own validation split from its seed.
+
+## Run a study with several seeds
+
+A study is a YAML file in `sweeps/`. It lists models, seeds, named variants
+(sets of config overrides) and an optional grid, and expands to one run per
+combination:
+
+```yaml
+# sweeps/my_study.yaml
+name: my_study
+output_root: runs/my_study
+models: [tinyvgg, resnet]
+seeds: [0, 1, 2, 3, 4]
+base_args: ["--amp"]                 # passed to every train.py call
+variants:
+  default: {}
+  no_crop:
+    augmentation.random_crop: false
+grid:                                # optional cartesian product
+  training.learning_rate: [1.0e-3, 3.0e-4]
+```
+
+```bash
+python src/cli/sweep.py expand sweeps/my_study.yaml      # writes the manifest, prints the run count
+python src/cli/sweep.py run    sweeps/my_study.yaml --all  # run everything here, one after another
+python src/cli/sweep.py status sweeps/my_study.yaml      # finished / failed / pending
+```
+
+On a SLURM cluster, each manifest row is one job-array task; see
+[`cluster/README.md`](../cluster/README.md). Runs resume automatically, so
+failed or pre-empted tasks can simply be resubmitted.
+
+Summarise and analyse the results:
+
+```bash
+# mean, std and 95% CI per group
+python src/cli/aggregate.py runs/my_study --out results/sweeps/my_study
+
+# compare every group with one baseline, paired by seed
+python src/cli/aggregate.py runs/my_study --baseline 'tinyvgg|default'
+
+# calibration and robustness for every checkpoint, and seed ensembles per group
+python src/cli/analyze_runs.py  runs/my_study --out results/sweeps/my_study
+python src/cli/ensemble_runs.py runs/my_study --out results/sweeps/my_study
+```
+
+Group names are `model|variant`, with the grid values appended when there is a
+grid. The paired comparison only uses seeds both groups share, which is why
+studies reuse the same seeds across variants.
+
+After adding results to `results/sweeps/`, rebuild the website locally with
+`python site/build.py` (it writes `_site/index.html`); pushing to `main`
+rebuilds and deploys it automatically.
+
+## Serve a model
+
+```bash
+uvicorn src.serving.api:app --port 8000          # REST API, docs at http://localhost:8000/docs
+python apps/gradio_app.py                        # Gradio demo
+streamlit run apps/streamlit_dashboard.py        # Streamlit dashboard
+docker compose -f docker/docker-compose.yml up   # all of the above plus Jupyter
+```
+
+Initialise the API with a checkpoint written by `train.py`:
+
+```bash
+curl -X POST "http://localhost:8000/initialize?model_path=models/best_model_weights/best_model_weights.pth&config_path=config.yaml"
+curl -F "file=@shirt.png" http://localhost:8000/predict
+```
+
+Input images can be any size, colour or grayscale. They are converted to the
+28 × 28 grayscale format the models were trained on, and photos with a light
+background are inverted to match Fashion-MNIST's light-on-black images. The
+apps offer the shipped best model plus any model you have trained, and say so
+when a model has no trained weights.
+
+## Configuration
+
+All defaults live in `config.yaml`. The settings most worth knowing:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `training.epochs` | 75 | upper limit; early stopping often ends runs well before it |
+| `training.early_stopping_patience` | 10 | epochs without validation-accuracy improvement before stopping |
+| `training.learning_rate`, `weight_decay` | 1e-3, 1e-4 | the optimum in the learning-rate study |
+| `training.optimizer`, `scheduler` | adam, cosine | also `adamw`, `sgd`; `step`, `exponential`, `none` |
+| `training.seed`, `deterministic` | 42, false | see Reproducibility above |
+| `training.amp`, `compile` | false, false | mixed precision and `torch.compile` (CUDA) |
+| `training.label_smoothing`, `grad_clip` | 0.0, null | optional regularisation |
+| `model.pretrained`, `image_size` | true, null | timm backbones only; null means 64 px for CNNs, 224 px for ViT |
+| `augmentation.random_crop` | true | padded crop; helps ResNet, hurts the two small CNNs |
+| `augmentation.rotation`, `horizontal_flip` | 10, true | per-image rotation (degrees) and flip |
+| `augmentation.mixup`, `cutmix`, `mix_prob` | true, true, 0.3 | batch mixing and how often it is applied |
+| `augmentation.fill` | background | fill for pixels exposed by crop and rotation |
+| `augmentation.legacy_batch_mode` | false | reproduce the pre-fix pipeline; only for comparisons |
+| `data.num_workers` | 0 | data-loader workers; raise on machines with many cores |
+| `monitoring.mlflow_tracking`, `wandb_enabled` | false | mirror run metrics to those services |
+
+## Where outputs go
+
+```text
+models/all_models/<model>/          # train.py default output directory
+    <model>_best.pth                # best-validation weights
+    <model>_best_spec.json          # architecture, so any tool can rebuild the model
+    <model>_last.pt                 # full state for --resume
+    <model>_history.json            # per-epoch curves
+    run.json, metrics.jsonl         # run metadata and metrics
+models/best_model_weights/          # best of a `--model all` run, plus best_model_info.json
+runs/<study>/<run>/<model>/         # the same files for every sweep run
+results/sweeps/                     # aggregated tables and per-run CSVs (committed)
+results/evaluation_results/         # evaluate.py CSVs and analysis.json
+figures/evaluation_plots/           # evaluate.py figures
+```
+
+## Troubleshooting
+
+**Out of GPU memory.** Lower `--batch-size`, or use `--amp`. ViT models at
+224 px are by far the most memory-hungry.
+
+**Training is slow on a CPU.** Use `minicnn` or `tinyvgg`, fewer `--epochs`,
+and `--num-workers` above 0.
+
+**MPS is not used on an Apple Silicon Mac.** Check that
+`python -c "import torch; print(torch.backends.mps.is_available())"` prints
+`True`; upgrade PyTorch if not.
+
+**A pretrained backbone fails to download.** On machines without internet
+access, run `python cluster/prefetch.py` on a connected machine first and share
+`HF_HOME` / `TORCH_HOME`; see [`cluster/README.md`](../cluster/README.md).
+
+**"could not create a primitive" on a CPU-only machine.** Some virtual machines
+lack CPU features that PyTorch's oneDNN backend needs. The code detects this
+and falls back to PyTorch's own kernels automatically.
+
+**A test fails after changing a command-line flag.** Run
+`python docs/cli_reference.py` to regenerate the command-line reference.

@@ -132,7 +132,7 @@ def save_split_to_csv(images, labels, output_path: str):
 
 def prepare_data(
     data_dir: str = "./data",
-    output_dir: str = "./data_preparation",
+    output_dir: str = "./data/processed",
     train_split: float = 0.8,
     save_csv: bool = True,
     random_seed: int = 42
@@ -199,8 +199,8 @@ def main():
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="./data_preparation",
-        help="Directory for processed CSV files (default: ./data_preparation)"
+        default="./data/processed",
+        help="Directory for processed CSV files (default: ./data/processed)"
     )
     parser.add_argument(
         "--train-split",
