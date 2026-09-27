@@ -52,6 +52,7 @@ logs/
 data/raw/*
 data/processed/*
 data/FashionMNIST/*
+data/notebook_splits/
 *.gz
 !data/raw/.gitkeep
 !data/processed/.gitkeep

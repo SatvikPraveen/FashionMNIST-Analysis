@@ -455,7 +455,11 @@ The original exploratory workflow, kept for reference:
 [CNN training](notebooks/modeling.ipynb),
 [fine-tuning](notebooks/finetuning.ipynb),
 [evaluation](notebooks/evaluate_best_model.ipynb) and a
-[training-pipeline demo](notebooks/training_demo.ipynb).
+[training-pipeline demo](notebooks/training_demo.ipynb). Run
+the data-preparation notebook first: the notebooks use their own split, saved
+to `data/notebook_splits/` with pixels scaled to 0–1, separate from the
+pipeline's `data/processed/` files (raw 0–255 pixels) that everything in
+`src/` uses.
 
 ## Documentation
 
