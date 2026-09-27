@@ -278,6 +278,32 @@ average vs a 75-epoch cap), so part of the crop penalty may be an
 under-training effect of the fixed budget. `sweeps/crop_confirmation.yaml`
 tests this on all three models with fresh seeds and a longer budget.
 
+### Seed ensembles (5 members per group, 2026-09-27)
+
+Softmax average of the five seed checkpoints of each group on the official
+test set (`src/cli/ensemble_runs.py`;
+[table](results/sweeps/seed_ensembles_ensemble.md)).
+
+| Group | Mean member acc | Best member | Ensemble acc | Gain | ECE: member → ensemble | Mixup/CutMix in training |
+|---|---|---|---|---|---|---|
+| TinyVGG, no crop | 0.9333 | 0.9398 | **0.9412** | +0.0079 | 0.007 → 0.020 | yes |
+| TinyVGG, no rotation | 0.9293 | 0.9360 | 0.9380 | +0.0087 | 0.011 → 0.026 | yes |
+| ResNet-18 (custom) | 0.9257 | 0.9400 | 0.9377 | +0.0120 | 0.015 → 0.034 | yes |
+| TinyVGG, full recipe | 0.9238 | 0.9282 | 0.9344 | +0.0106 | 0.009 → 0.026 | yes |
+| TinyVGG, no Mixup/CutMix | 0.9229 | 0.9294 | 0.9342 | +0.0113 | 0.019 → **0.007** | **no** |
+| TinyVGG, no augmentation | 0.9173 | 0.9186 | 0.9339 | **+0.0166** | 0.039 → **0.008** | **no** |
+| MiniCNN | 0.9000 | 0.9059 | 0.9110 | +0.0110 | 0.015 → 0.034 | yes |
+
+**Findings.** (1) Ensembling five seeds adds 0.8–1.7 points everywhere and
+always lowers NLL. (2) It *worsens* calibration whenever the members were
+trained with Mixup/CutMix (ECE roughly triples) and *improves* it sharply when
+they were not. Mixup already makes single models underconfident (T < 1 above),
+and averaging compounds it. This reproduces Wen et al., *Combining Ensembles
+and Data Augmentation Can Harm Your Calibration* (ICLR 2021) on this benchmark.
+(3) Augmentation and ensembling are partly substitutes: unaugmented members
+disagree most (14.6% of test images) and gain most, so the no-augmentation
+ensemble matches the full-recipe ensemble.
+
 ### Learning rate × weight decay (TinyVGG, 3 seeds per cell, 2026-09-27)
 
 Adam, cosine schedule, full augmentation recipe. Paired by seed against the
