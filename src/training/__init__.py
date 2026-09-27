@@ -2,6 +2,7 @@
 
 from .utils import (
     get_device,
+    ensure_cpu_conv_backend,
     print_device_info,
     count_parameters,
     model_summary,
@@ -12,6 +13,7 @@ from .utils import (
 from .reproducibility import set_seed, seed_worker, make_generator
 
 __all__ = [
+    "ensure_cpu_conv_backend",
     "set_seed",
     "seed_worker",
     "make_generator",

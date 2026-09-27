@@ -22,6 +22,39 @@ logger = logging.getLogger(__name__)
 # DEVICE DETECTION AND UTILITIES
 # ============================================================================
 
+_CPU_CONV_CHECKED = False
+
+
+def ensure_cpu_conv_backend() -> bool:
+    """
+    Probe a tiny CPU convolution and disable oneDNN (mkldnn) if it fails.
+
+    Some virtualised login nodes (e.g. KVM head nodes) expose a CPU
+    without AVX/SSE4 flags; oneDNN then raises "could not create a
+    primitive" for every conv. Falling back to the native ATen kernels is
+    slower but correct, and only matters for CPU runs such as tests.
+
+    Returns:
+        True if oneDNN was disabled by this call.
+    """
+    global _CPU_CONV_CHECKED
+    if _CPU_CONV_CHECKED:
+        return False
+    _CPU_CONV_CHECKED = True
+    if not torch.backends.mkldnn.is_available() or not torch.backends.mkldnn.enabled:
+        return False
+    try:
+        torch.nn.functional.conv2d(torch.zeros(1, 1, 8, 8), torch.zeros(1, 1, 3, 3))
+        return False
+    except RuntimeError as e:
+        if "primitive" not in str(e):
+            raise
+        torch.backends.mkldnn.enabled = False
+        logger.warning("oneDNN CPU convolutions unavailable on this host "
+                       f"({e}); disabled torch.backends.mkldnn")
+        return True
+
+
 def get_device(force_cpu: bool = False) -> torch.device:
     """
     Automatically detect the best available device.
@@ -36,6 +69,7 @@ def get_device(force_cpu: bool = False) -> torch.device:
     """
     if force_cpu:
         device = torch.device("cpu")
+        ensure_cpu_conv_backend()
         logger.info("🖥️  Device: CPU (forced)")
         return device
     
@@ -54,6 +88,7 @@ def get_device(force_cpu: bool = False) -> torch.device:
     
     # Fallback to CPU
     device = torch.device("cpu")
+    ensure_cpu_conv_backend()
     logger.info("🖥️  Device: CPU")
     return device
 
