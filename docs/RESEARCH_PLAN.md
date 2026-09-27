@@ -1,6 +1,8 @@
 # Research plan: what does a modern training recipe buy on a small grayscale benchmark?
 
-**Status:** infrastructure complete (branch `research-grade`, 2026-09-26); experiments not yet run.
+**Status (2026-09-27):** infrastructure complete and running on a SLURM GPU cluster.
+Q1, Q3 and Q4 answered; Q2, the crop confirmation, Q5 and seed ensembles
+are running. Full result tables live in the README and `results/sweeps/`.
 
 Fashion-MNIST is small enough to run hundreds of controlled experiments and
 well-studied enough that the literature gives clear reference points
@@ -26,6 +28,22 @@ heavy augmentation or ensembles). That makes it a good testbed for an
 Every sweep varies **seeds** (3–5) so every comparison comes with a
 confidence interval. All numbers are on the **official 10,000-image test
 set**, evaluated **once** from the best-validation checkpoint.
+
+## Results so far
+
+| # | Answer | Evidence |
+|---|---|---|
+| Q1 | ResNet 0.9256 ± 0.0134, TinyVGG 0.9225 ± 0.0057, MiniCNN 0.9000 ± 0.0034 (n = 5). The single-seed "TinyVGG is best" claim does **not** hold: ResNet and TinyVGG CIs overlap, and ResNet's seed spread is >2× TinyVGG's. | `results/sweeps/baseline_seeds_*` |
+| Q3 | Padded random crop **hurts** TinyVGG: removing it gains +0.95 points (paired, p = 0.018, 5/5 seeds). No other single component is detectable at n = 5; the whole recipe is worth only +0.65 points over none (p = 0.127). | `results/sweeps/augmentation_ablation_*` |
+| Q3b | Running: `crop_confirmation.yaml` repeats the crop test on all three CNNs with fresh seeds 5–9 and a 150-epoch budget, to separate a real penalty from under-training. | job 488421 |
+| Q4 | The default LR 1e-3 / WD 1e-4 is optimal; LR 3e-4 is equivalent, LR 3e-3 costs 3–4 points, WD 5e-4 loses on every seed. | `results/sweeps/lr_grid_*` |
+| Q2 | Running. Early sign: pretrained ResNet-18 at 64 px reached 0.939 validation accuracy by epoch 25, above every custom CNN. | job 488358 |
+| Q5 | Running: `src/cli/analyze_runs.py` over the baseline and ablation checkpoints. | jobs 488426, 488427 |
+
+Statistical note added during the study: because sweeps reuse seeds across
+variants, comparisons are now made **paired by seed**
+(`aggregate.py --baseline`), which is what made the crop effect detectable
+where the unpaired CIs still overlapped.
 
 ## Protocol
 
@@ -60,9 +78,8 @@ are feasible locally; Q2 is not.
 
 ## Known gaps to close before writing anything up
 
-* Ensembles (`src/models/ensemble.py`) are implemented but not yet driven by
-  a sweep; an "ensemble of the 5 seeds" row for each model is a cheap and
-  informative addition.
+* ~~Ensembles not driven by a sweep~~ — `src/cli/ensemble_runs.py` now builds
+  a seed ensemble per group (job 488429 running).
 * Grad-CAM (`src/evaluation/explainability.py`) is not yet part of
   `evaluate.py --analysis`.
 * The traditional-ML results (`results/Traditional_ML_Algo_results`) are
