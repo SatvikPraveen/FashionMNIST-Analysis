@@ -391,6 +391,15 @@ and Data Augmentation Can Harm Your Calibration* (ICLR 2021) on this benchmark.
 disagree most (14.6% of test images) and gain most, so the no-augmentation
 ensemble matches the full-recipe ensemble.
 
+**Replication on the fixed augmentation pipeline**
+([table](results/sweeps/augmentation_fixed_ensemble.md)). All three findings
+hold. Ensembling raises ECE for every Mixup/CutMix-trained group (fixed full
+recipe 0.0077 → 0.0208) and lowers it for the groups trained without
+Mixup/CutMix (0.0166 → 0.0038) or without any augmentation (0.0331 → 0.0091);
+the no-augmentation ensemble (0.9347) again matches the full-recipe ensemble
+(0.9352). The most accurate result in the study is a **five-seed ensemble of
+TinyVGG trained without random crop: 0.9421**, with 0.14M parameters per member.
+
 ### Learning rate × weight decay (TinyVGG, 3 seeds per cell, 2026-09-27, legacy pipeline)
 
 Adam, cosine schedule, full augmentation recipe. Paired by seed against the
