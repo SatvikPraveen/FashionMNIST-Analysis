@@ -24,11 +24,15 @@ training:
   batch_size: 32
   learning_rate: 1e-3
   weight_decay: 1e-4
-  optimizer: "adam" # adam, sgd
+  optimizer: "adam" # adam, adamw, sgd
   scheduler: "cosine" # cosine, step, exponential, none
   early_stopping_patience: 10
   seed: 42                # Global seed (model init, shuffling, split, augmentation)
   deterministic: false    # Force deterministic kernels (slower; bit-exact repro)
+  label_smoothing: 0.0    # CrossEntropy label smoothing (0.1 is a common recipe value)
+  grad_clip: null         # Max gradient norm, e.g. 1.0; null = off
+  amp: false              # Mixed precision on CUDA (bf16 if supported, else fp16)
+  compile: false          # torch.compile the model on CUDA
 
 # Data Configuration
 data:
@@ -67,6 +71,7 @@ augmentation:
   gaussian_noise_std: 0.02
 
   # Batch-level mixing (these work well; keep both)
+  mix_prob: 0.3   # Probability that a batch gets Mixup or CutMix
   cutmix: true
   cutmix_alpha: 1.0
   mixup: true
@@ -87,9 +92,14 @@ explainability:
   layer_for_gradcam: "layer4" # For ResNet
 
 # Monitoring Configuration
+# Every run always writes run.json + metrics.jsonl to its output directory.
+# MLflow / W&B mirror the same data when enabled AND the package is installed.
 monitoring:
   mlflow_tracking: false
+  mlflow_tracking_uri: null   # e.g. "file:./mlruns" or "http://host:5000"
+  experiment_name: "fashion-mnist"
   wandb_enabled: false
+  wandb_project: "fashion-mnist"
   log_metrics: true
   log_predictions: true
   drift_detection: false

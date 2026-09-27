@@ -17,6 +17,8 @@ import logging
 import json
 from pathlib import Path
 from datetime import datetime
+import time
+import contextlib
 from typing import Tuple, Optional
 import numpy as np
 
@@ -36,6 +38,7 @@ from src.models.registry import (
     build_from_spec, model_spec_from_config, resolve_name, spec_path_for, CUSTOM_MODELS
 )
 from src.training.reproducibility import set_seed
+from src.training.experiment import ExperimentLogger
 from src.training.utils import (
     get_device,
     print_device_info,
@@ -133,6 +136,28 @@ def get_model(model_name: str, num_classes: int = 10, in_channels: int = 1,
     return model
 
 
+def make_autocast(device: torch.device, enabled: bool):
+    """
+    Return (autocast_context_factory, GradScaler-or-None, dtype-name).
+
+    * CUDA: bf16 autocast when the GPU supports it (no scaler needed),
+      otherwise fp16 autocast + GradScaler.
+    * CPU: bf16 autocast (functional, mainly for tests).
+    * MPS: autocast is not reliable across torch versions -> disabled.
+    """
+    if not enabled:
+        return (lambda: contextlib.nullcontext()), None, "fp32"
+    if device.type == "cuda":
+        if torch.cuda.is_bf16_supported():
+            return (lambda: torch.autocast("cuda", dtype=torch.bfloat16)), None, "bf16"
+        scaler = torch.amp.GradScaler("cuda")
+        return (lambda: torch.autocast("cuda", dtype=torch.float16)), scaler, "fp16"
+    if device.type == "cpu":
+        return (lambda: torch.autocast("cpu", dtype=torch.bfloat16)), None, "bf16"
+    logger.warning(f"AMP requested but not supported on device '{device.type}'; using fp32")
+    return (lambda: contextlib.nullcontext()), None, "fp32"
+
+
 def train_epoch_with_augmentation(
     model: nn.Module,
     dataloader: DataLoader,
@@ -140,10 +165,14 @@ def train_epoch_with_augmentation(
     optimizer: optim.Optimizer,
     device: torch.device,
     augmentation_pipeline: Optional[AugmentationPipeline] = None,
-    use_mixup_cutmix: bool = False
+    use_mixup_cutmix: bool = False,
+    autocast_ctx=None,
+    scaler=None,
+    grad_clip: Optional[float] = None,
+    mix_prob: float = 0.3,
 ) -> Tuple[float, float]:
     """
-    Train for one epoch with optional augmentation.
+    Train for one epoch with optional augmentation, AMP and grad clipping.
     
     Args:
         model: PyTorch model
@@ -153,46 +182,57 @@ def train_epoch_with_augmentation(
         device: Device to train on
         augmentation_pipeline: Augmentation pipeline
         use_mixup_cutmix: Whether to use Mixup/CutMix
+        autocast_ctx: zero-arg callable returning an autocast context (see make_autocast)
+        scaler: torch.amp.GradScaler for fp16, else None
+        grad_clip: max gradient norm, or None
+        mix_prob: probability of applying Mixup/CutMix to a batch
         
     Returns:
-        Tuple of (train_loss, train_acc)
+        Tuple of (train_loss, train_acc), both sample-weighted
     """
     model.train()
     total_loss, total_correct, total_samples = 0.0, 0, 0
+    if autocast_ctx is None:
+        autocast_ctx = contextlib.nullcontext
     
     for batch_idx, (X, y) in enumerate(dataloader):
-        X, y = X.to(device), y.to(device)
+        X, y = X.to(device, non_blocking=True), y.to(device, non_blocking=True)
 
         # Apply sample-level augmentations (rotation, flips, erasing, etc.)
         if augmentation_pipeline:
             X = augmentation_pipeline.apply_sample_augmentations(X)
 
-        # Apply Mixup or CutMix with 30% probability (less label noise)
-        if use_mixup_cutmix and augmentation_pipeline:
-            if np.random.rand() < 0.3:
-                # Randomly choose between Mixup and CutMix
-                if np.random.rand() < 0.5 and augmentation_pipeline.mixup_enabled:
-                    X, y_a, y_b, lam = augmentation_pipeline.apply_mixup(X, y)
-                    y_pred = model(X)
-                    loss = Mixup.mixup_criterion(loss_fn, y_pred, y_a, y_b, lam)
-                elif augmentation_pipeline.cutmix_enabled:
-                    X, y_a, y_b, lam = augmentation_pipeline.apply_cutmix(X, y)
-                    y_pred = model(X)
-                    loss = CutMix.cutmix_criterion(loss_fn, y_pred, y_a, y_b, lam)
-                else:
-                    y_pred = model(X)
-                    loss = loss_fn(y_pred, y)
-            else:
-                y_pred = model(X)
-                loss = loss_fn(y_pred, y)
-        else:
+        mixed = False
+        if use_mixup_cutmix and augmentation_pipeline and np.random.rand() < mix_prob:
+            if np.random.rand() < 0.5 and augmentation_pipeline.mixup_enabled:
+                X, y_a, y_b, lam = augmentation_pipeline.apply_mixup(X, y)
+                criterion = Mixup.mixup_criterion
+                mixed = True
+            elif augmentation_pipeline.cutmix_enabled:
+                X, y_a, y_b, lam = augmentation_pipeline.apply_cutmix(X, y)
+                criterion = CutMix.cutmix_criterion
+                mixed = True
+
+        with autocast_ctx():
             y_pred = model(X)
-            loss = loss_fn(y_pred, y)
+            if mixed:
+                loss = criterion(loss_fn, y_pred, y_a, y_b, lam)
+            else:
+                loss = loss_fn(y_pred, y)
         
-        # Backward pass
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        optimizer.zero_grad(set_to_none=True)
+        if scaler is not None:
+            scaler.scale(loss).backward()
+            if grad_clip:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            loss.backward()
+            if grad_clip:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+            optimizer.step()
         
         # Sample-weighted accumulation (accuracy is measured against the
         # un-mixed labels, which is the usual convention under Mixup/CutMix)
@@ -206,69 +246,11 @@ def train_epoch_with_augmentation(
     return total_loss / total_samples, total_correct / total_samples
 
 
-def train_model(
-    model: nn.Module,
-    train_loader: DataLoader,
-    val_loader: DataLoader,
-    test_loader: Optional[DataLoader],
-    config: dict,
-    device: torch.device,
-    output_dir: str,
-    model_name: str
-) -> dict:
-    """
-    Complete training pipeline for a model.
-    
-    Returns:
-        Dictionary with training history
-    """
-    logger.info(f"\n{'='*60}")
-    logger.info(f"TRAINING: {model_name}")
-    logger.info(f"{'='*60}")
-    
-    # Model to device
-    model = model.to(device)
-    
-    # Print model summary
-    logger.info(f"\n📊 Model Parameters: {count_parameters(model):,}")
-    
-    # Setup loss and optimizer
-    loss_fn = nn.CrossEntropyLoss()
-    
-    # Ensure numeric values
-    learning_rate = float(config.training.learning_rate)
-    weight_decay = float(config.training.weight_decay)
-    
-    if config.training.optimizer.lower() == "adam":
-        optimizer = optim.Adam(
-            model.parameters(),
-            lr=learning_rate,
-            weight_decay=weight_decay
-        )
-    else:
-        optimizer = optim.SGD(
-            model.parameters(),
-            lr=learning_rate,
-            momentum=0.9,
-            weight_decay=weight_decay
-        )
-    
-    # Setup learning rate scheduler
-    scheduler = None
-    epochs = int(config.training.epochs)
-    
-    if config.training.scheduler.lower() == "cosine":
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=epochs
-        )
-    elif config.training.scheduler.lower() == "step":
-        scheduler = optim.lr_scheduler.StepLR(
-            optimizer, step_size=10, gamma=0.1
-        )
-    
+def build_augmentation_pipeline(config) -> Optional[AugmentationPipeline]:
+    """Translate the ``augmentation`` config section into an AugmentationPipeline."""
     # Setup augmentation pipeline
     augmentation_pipeline = None
-    use_augmentation = config.augmentation.enabled
+    use_augmentation = bool(config.augmentation.enabled)
     
     if use_augmentation:
         aug_config = {}
@@ -330,9 +312,116 @@ def train_model(
         augmentation_pipeline = AugmentationPipeline(aug_config)
         logger.info(f"✅ Augmentation enabled: {list(aug_config.keys())}")
     
+    return augmentation_pipeline
+
+
+def _unwrap(model: nn.Module) -> nn.Module:
+    """Return the underlying module of a torch.compile'd model."""
+    return getattr(model, "_orig_mod", model)
+
+
+def build_optimizer(model: nn.Module, config) -> optim.Optimizer:
+    lr = float(config.training.learning_rate)
+    wd = float(config.training.weight_decay)
+    name = str(config.training.optimizer).lower()
+    params = [p for p in model.parameters() if p.requires_grad]
+    if name == "adam":
+        return optim.Adam(params, lr=lr, weight_decay=wd)
+    if name == "adamw":
+        return optim.AdamW(params, lr=lr, weight_decay=wd)
+    if name == "sgd":
+        return optim.SGD(params, lr=lr, momentum=0.9, weight_decay=wd,
+                         nesterov=bool(config.get("training.nesterov", True)))
+    raise ValueError(f"Unknown optimizer '{name}' (adam, adamw, sgd)")
+
+
+def build_scheduler(optimizer: optim.Optimizer, config, epochs: int):
+    name = str(config.training.scheduler).lower()
+    if name == "cosine":
+        return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
+    if name == "step":
+        return optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+    if name == "exponential":
+        return optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
+    if name == "onecycle":
+        return None  # handled per-step; not used here
+    return None
+
+
+def train_model(
+    model: nn.Module,
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    test_loader: Optional[DataLoader],
+    config: dict,
+    device: torch.device,
+    output_dir: str,
+    model_name: str,
+    run_name: Optional[str] = None,
+    resume: bool = False,
+    experiment: Optional[ExperimentLogger] = None,
+) -> dict:
+    """
+    Complete training pipeline for a model.
+
+    Writes into ``<output_dir>/<model_name>/``:
+        ``<model_name>_best.pth``       best-val weights (plus ``_spec.json``)
+        ``<model_name>_last.pt``        full resume state (model/opt/sched/epoch)
+        ``metrics.jsonl``, ``run.json`` experiment log (see experiment.py)
+
+    Args:
+        run_name: Name for the experiment logger (default: model_name).
+        resume: If True and ``<model_name>_last.pt`` exists, continue from it.
+            The LR scheduler is rebuilt for the current ``training.epochs``
+            and fast-forwarded to the resumed epoch.
+        experiment: An existing ExperimentLogger to reuse; else one is created.
+    
+    Returns:
+        Dictionary with training history
+    """
+    logger.info(f"\n{'='*60}")
+    logger.info(f"TRAINING: {model_name}")
+    logger.info(f"{'='*60}")
+
+    model_output_dir = os.path.join(output_dir, model_name)
+    os.makedirs(model_output_dir, exist_ok=True)
+    best_model_path = os.path.join(model_output_dir, f"{model_name}_best.pth")
+    last_state_path = os.path.join(model_output_dir, f"{model_name}_last.pt")
+
+    # Model to device (+ optional torch.compile on CUDA)
+    model = model.to(device)
+    use_compile = bool(config.get("training.compile", False)) and device.type == "cuda"
+    if use_compile:
+        try:
+            model = torch.compile(model)
+            logger.info("⚡ torch.compile enabled")
+        except Exception as e:
+            logger.warning(f"torch.compile failed, continuing eagerly: {e}")
+    raw_model = _unwrap(model)
+
+    logger.info(f"\n📊 Model Parameters: {count_parameters(raw_model):,}")
+
+    # Loss / optimizer / scheduler
+    label_smoothing = float(config.get("training.label_smoothing", 0.0))
+    loss_fn = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
+    learning_rate = float(config.training.learning_rate)
+    optimizer = build_optimizer(model, config)
+    epochs = int(config.training.epochs)
+    scheduler = build_scheduler(optimizer, config, epochs)
+
+    # Mixed precision / grad clipping
+    autocast_ctx, scaler, amp_dtype = make_autocast(device, bool(config.get("training.amp", False)))
+    grad_clip = config.get("training.grad_clip", None)
+    grad_clip = float(grad_clip) if grad_clip else None
+
+    # Augmentation
+    use_augmentation = bool(config.augmentation.enabled)
+    augmentation_pipeline = build_augmentation_pipeline(config) if use_augmentation else None
+    mix_prob = float(config.get("augmentation.mix_prob", 0.3))
+
     # Early stopping
     early_stopping = EarlyStopping(
-        patience=config.training.early_stopping_patience,
+        patience=int(config.training.early_stopping_patience),
         min_delta=0.001,
         verbose=True
     )
@@ -341,75 +430,173 @@ def train_model(
     history = {
         'model_name': model_name,
         'seed': config.get('training.seed', None),
+        'amp': amp_dtype,
         'train_loss': [],
         'train_acc': [],
         'val_loss': [],
         'val_acc': [],
-        'learning_rates': []
+        'learning_rates': [],
+        'epoch_time_sec': [],
     }
+    best_val_acc = 0.0
+    start_epoch = 0
 
-    # Training loop
+    # Resume ------------------------------------------------------------ #
+    if resume and os.path.exists(last_state_path):
+        state = torch.load(last_state_path, map_location=device, weights_only=False)
+        raw_model.load_state_dict(state["model"])
+        optimizer.load_state_dict(state["optimizer"])
+        # The scheduler is rebuilt for the *current* epoch budget and
+        # fast-forwarded, rather than restored: restoring would keep the old
+        # horizon (e.g. cosine T_max), which drives the LR to 0 if the run
+        # is resumed with a larger --epochs.
+        scheduler = build_scheduler(optimizer, config, epochs)
+        for _ in range(state["epoch"] + 1):
+            if scheduler is not None:
+                scheduler.step()
+        if scaler is not None and state.get("scaler") is not None:
+            scaler.load_state_dict(state["scaler"])
+        history = state["history"]
+        best_val_acc = state["best_val_acc"]
+        start_epoch = state["epoch"] + 1
+        es = state.get("early_stopping", {})
+        early_stopping.best_acc = es.get("best_acc")
+        early_stopping.counter = es.get("counter", 0)
+        early_stopping.best_epoch = es.get("best_epoch", 0)
+        logger.info(f"⏯️  Resumed from {last_state_path} at epoch {start_epoch} "
+                    f"(best_val_acc={best_val_acc:.4f})")
+    elif resume:
+        logger.info("No resume state found; starting from scratch")
+
+    # Experiment logger -------------------------------------------------- #
+    own_experiment = experiment is None
+    if own_experiment:
+        mon = config.get("monitoring", {}) or {}
+        experiment = ExperimentLogger(
+            run_dir=model_output_dir,
+            run_name=run_name or model_name,
+            config=config,
+            device=device,
+            use_mlflow=bool(mon.get("mlflow_tracking", False)),
+            use_wandb=bool(mon.get("wandb_enabled", False)),
+            mlflow_tracking_uri=mon.get("mlflow_tracking_uri"),
+            experiment_name=mon.get("experiment_name", "fashion-mnist"),
+            wandb_project=mon.get("wandb_project", "fashion-mnist"),
+        )
+    spec = getattr(raw_model, "spec", None)
+    experiment.log_params({
+        "model": model_name,
+        "model_spec": spec.to_dict() if spec is not None else None,
+        "seed": config.get("training.seed", None),
+        "epochs": epochs,
+        "batch_size": int(config.training.batch_size),
+        "learning_rate": learning_rate,
+        "weight_decay": float(config.training.weight_decay),
+        "optimizer": str(config.training.optimizer),
+        "scheduler": str(config.training.scheduler),
+        "label_smoothing": label_smoothing,
+        "grad_clip": grad_clip,
+        "amp": amp_dtype,
+        "compile": use_compile,
+        "augmentation": config.augmentation.to_dict() if use_augmentation else {"enabled": False},
+        "num_parameters": count_parameters(raw_model),
+        "train_samples": len(train_loader.dataset),
+        "val_samples": len(val_loader.dataset),
+        "test_samples": len(test_loader.dataset) if test_loader else 0,
+    })
+
     logger.info(f"\n🚀 Starting training for {epochs} epochs...")
     logger.info(f"   Batch size: {int(config.training.batch_size)}")
     logger.info(f"   Learning rate: {learning_rate}")
-    logger.info(f"   Optimizer: {config.training.optimizer}")
+    logger.info(f"   Optimizer: {config.training.optimizer} | Scheduler: {config.training.scheduler}")
+    logger.info(f"   AMP: {amp_dtype} | Grad clip: {grad_clip} | Label smoothing: {label_smoothing}")
+    logger.info(f"   Augmentation: {'on' if use_augmentation else 'off'}")
     logger.info(f"   Device: {device}\n")
 
-    best_val_acc = 0.0
-    model_output_dir = os.path.join(output_dir, model_name)
-    os.makedirs(model_output_dir, exist_ok=True)
-    best_model_path = os.path.join(model_output_dir, f"{model_name}_best.pth")
+    status = "finished"
+    try:
+        for epoch in range(start_epoch, epochs):
+            t_epoch = time.time()
+            train_loss, train_acc = train_epoch_with_augmentation(
+                model, train_loader, loss_fn, optimizer, device,
+                augmentation_pipeline, use_mixup_cutmix=use_augmentation,
+                autocast_ctx=autocast_ctx, scaler=scaler, grad_clip=grad_clip,
+                mix_prob=mix_prob,
+            )
+            val_loss, val_acc = validation_step(model, val_loader, loss_fn, device)
+            epoch_time = time.time() - t_epoch
+            lr_now = optimizer.param_groups[0]['lr']
 
-    for epoch in range(epochs):
-        # Train with augmentation
-        train_loss, train_acc = train_epoch_with_augmentation(
-            model, train_loader, loss_fn, optimizer, device,
-            augmentation_pipeline, use_mixup_cutmix=use_augmentation
-        )
+            history['train_loss'].append(train_loss)
+            history['train_acc'].append(train_acc)
+            history['val_loss'].append(val_loss)
+            history['val_acc'].append(val_acc)
+            history['learning_rates'].append(lr_now)
+            history['epoch_time_sec'].append(epoch_time)
+            experiment.log_metrics({
+                "train_loss": train_loss, "train_acc": train_acc,
+                "val_loss": val_loss, "val_acc": val_acc,
+                "lr": lr_now, "epoch_time_sec": epoch_time,
+            }, step=epoch + 1)
 
-        # Validation
-        val_loss, val_acc = validation_step(model, val_loader, loss_fn, device)
+            logger.info(
+                f"Epoch {epoch+1:3d}/{epochs} | "
+                f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f} | "
+                f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f} | "
+                f"LR: {lr_now:.6f} | {epoch_time:.1f}s"
+            )
 
-        # Record history
-        history['train_loss'].append(train_loss)
-        history['train_acc'].append(train_acc)
-        history['val_loss'].append(val_loss)
-        history['val_acc'].append(val_acc)
-        history['learning_rates'].append(optimizer.param_groups[0]['lr'])
+            # Save best model (track by val_acc)
+            if val_acc > best_val_acc:
+                best_val_acc = val_acc
+                torch.save(raw_model.state_dict(), best_model_path)
+                if spec is not None:
+                    spec.save(spec_path_for(best_model_path))
+                logger.info(f"   💾 Saved best model (val_acc: {val_acc:.4f})")
 
-        # Print progress
-        logger.info(
-            f"Epoch {epoch+1:3d}/{epochs} | "
-            f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f} | "
-            f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f} | "
-            f"LR: {optimizer.param_groups[0]['lr']:.6f}"
-        )
+            stop = early_stopping(val_acc, epoch)
 
-        # Save best model (track by val_acc)
-        if val_acc > best_val_acc:
-            best_val_acc = val_acc
-            torch.save(model.state_dict(), best_model_path)
-            if getattr(model, "spec", None) is not None:
-                model.spec.save(spec_path_for(best_model_path))
-            logger.info(f"   💾 Saved best model (val_acc: {val_acc:.4f})")
+            if scheduler is not None:
+                scheduler.step()
 
-        # Early stopping check (monitors val_acc)
-        if early_stopping(val_acc, epoch):
-            logger.info(f"🛑 Early stopping at epoch {epoch+1}")
-            break
+            # Full state for pre-emption-safe resume (written every epoch)
+            torch.save({
+                "model": raw_model.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "scheduler": scheduler.state_dict() if scheduler is not None else None,
+                "scaler": scaler.state_dict() if scaler is not None else None,
+                "epoch": epoch,
+                "best_val_acc": best_val_acc,
+                "history": history,
+                "early_stopping": {"best_acc": early_stopping.best_acc,
+                                   "counter": early_stopping.counter,
+                                   "best_epoch": early_stopping.best_epoch},
+            }, last_state_path)
 
-        # Learning rate scheduler step
-        if scheduler:
-            scheduler.step()
+            if stop:
+                logger.info(f"🛑 Early stopping at epoch {epoch+1}")
+                break
 
-    # Test evaluation
-    if test_loader:
-        logger.info("\n📊 Evaluating on test set...")
-        model.load_state_dict(torch.load(best_model_path))
-        test_loss, test_acc = test_step(model, test_loader, loss_fn, device)
-        history['test_loss'] = test_loss
-        history['test_acc'] = test_acc
-        logger.info(f"   Test Loss: {test_loss:.4f} | Test Acc: {test_acc:.4f}")
+        # Test evaluation (best-val checkpoint, evaluated exactly once)
+        summary = {"best_val_acc": best_val_acc,
+                   "epochs_trained": len(history['train_loss']),
+                   "train_time_sec": float(sum(history['epoch_time_sec']))}
+        if test_loader:
+            logger.info("\n📊 Evaluating on test set...")
+            raw_model.load_state_dict(torch.load(best_model_path, map_location=device, weights_only=True))
+            test_loss, test_acc = test_step(model, test_loader, loss_fn, device)
+            history['test_loss'] = test_loss
+            history['test_acc'] = test_acc
+            summary.update(test_loss=test_loss, test_acc=test_acc)
+            logger.info(f"   Test Loss: {test_loss:.4f} | Test Acc: {test_acc:.4f}")
+        history['best_val_acc'] = best_val_acc
+    except BaseException:
+        status = "failed"
+        raise
+    finally:
+        if own_experiment:
+            experiment.finish(summary if status == "finished" else None, status=status)
+        experiment.log_artifact(best_model_path)
 
     logger.info(f"\n✅ Training complete for {model_name}")
     logger.info(f"   Best val acc: {best_val_acc:.4f}")
@@ -529,6 +716,37 @@ def main():
         default=None,
         help="Override training.learning_rate from config"
     )
+    parser.add_argument(
+        "--amp",
+        action="store_true",
+        help="Enable mixed precision (bf16 on supporting GPUs, else fp16+GradScaler)"
+    )
+    parser.add_argument(
+        "--compile",
+        action="store_true",
+        help="torch.compile the model (CUDA only)"
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume from <output-dir>/<model>/<model>_last.pt if present"
+    )
+    parser.add_argument(
+        "--run-name",
+        type=str,
+        default=None,
+        help="Experiment run name (default: <model>_seed<seed>)"
+    )
+    parser.add_argument(
+        "--mlflow",
+        action="store_true",
+        help="Mirror metrics to MLflow (monitoring.mlflow_tracking)"
+    )
+    parser.add_argument(
+        "--wandb",
+        action="store_true",
+        help="Mirror metrics to Weights & Biases (monitoring.wandb_enabled)"
+    )
     
     args = parser.parse_args()
     
@@ -551,6 +769,15 @@ def main():
         config.set('training.batch_size', int(args.batch_size))
     if args.lr is not None:
         config.set('training.learning_rate', float(args.lr))
+
+    if args.amp:
+        config.set('training.amp', True)
+    if args.compile:
+        config.set('training.compile', True)
+    if args.mlflow:
+        config.set('monitoring.mlflow_tracking', True)
+    if args.wandb:
+        config.set('monitoring.wandb_enabled', True)
 
     # Model-family overrides from the CLI
     if args.pretrained is not None:
@@ -608,6 +835,9 @@ def main():
     for model_name in models_to_train:
         model = get_model(model_name, num_classes=10, config=config)
         
+        run_name = args.run_name or f"{model_name}_seed{seed}"
+        if len(models_to_train) > 1 and args.run_name:
+            run_name = f"{args.run_name}_{model_name}"
         history = train_model(
             model=model,
             train_loader=train_loader,
@@ -616,7 +846,9 @@ def main():
             config=config,
             device=device,
             output_dir=args.output_dir,
-            model_name=model_name
+            model_name=model_name,
+            run_name=run_name,
+            resume=args.resume,
         )
         
         all_results[model_name] = history
