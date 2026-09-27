@@ -10,12 +10,12 @@ Complete guide for using the new training pipeline with data augmentation and de
 
 ```bash
 # Download and prepare FashionMNIST dataset
-python scripts/prepare_data.py --output-dir data_preparation
+python src/cli/prepare_data.py --output-dir data/processed
 
 # Options:
-python scripts/prepare_data.py \
+python src/cli/prepare_data.py \
     --data-dir ./data \
-    --output-dir ./data_preparation \
+    --output-dir ./data/processed \
     --train-split 0.8 \
     --seed 42
 ```
@@ -24,30 +24,30 @@ python scripts/prepare_data.py \
 
 ```bash
 # Train all models (MiniCNN, TinyVGG, ResNet)
-python scripts/train.py --model all
+python src/cli/train.py --model all
 
 # Train specific model
-python scripts/train.py --model resnet
+python src/cli/train.py --model resnet
 
 # Use CSV data instead of torchvision
-python scripts/train.py --model minicnn --use-csv \
-    --train-csv data_preparation/fashion_mnist_train.csv \
-    --val-csv data_preparation/fashion_mnist_val.csv \
-    --test-csv data_preparation/fashion_mnist_test.csv
+python src/cli/train.py --model minicnn --use-csv \
+    --train-csv data/processed/fashion_mnist_train.csv \
+    --val-csv data/processed/fashion_mnist_val.csv \
+    --test-csv data/processed/fashion_mnist_test.csv
 ```
 
 ### 3. Fine-tune with Hyperparameter Search
 
 ```bash
 # Fine-tune ResNet with grid search
-python scripts/finetune.py --model resnet \
+python src/cli/finetune.py --model resnet \
     --pretrained models/all_models/resnet/resnet_best.pth \
     --learning-rates 1e-5 5e-6 \
     --batch-sizes 32 64 \
     --patience-values 2 3
 
 # Quick test with single set of hyperparameters
-python scripts/finetune.py --model minicnn \
+python src/cli/finetune.py --model minicnn \
     --learning-rates 1e-4 \
     --batch-sizes 32 \
     --patience-values 2
@@ -57,20 +57,44 @@ python scripts/finetune.py --model minicnn \
 
 ```bash
 # Evaluate model on test set
-python main.py \
+python src/cli/evaluate.py \
     --model_path models/all_models/resnet/resnet_best.pth \
-    --test_csv data_preparation/fashion_mnist_test.csv \
+    --test_csv data/processed/fashion_mnist_test.csv \
     --test_dir results/evaluation
 ```
 
 ---
+
+## 🔬 Research flags (added 2026-09)
+
+`train.py` gained the following; every flag also has a `config.yaml` key.
+
+| flag | effect |
+|---|---|
+| `--model NAME [NAME ...]` | custom CNNs (`minicnn`, `tinyvgg`, `resnet`, `all`) **or any timm id / alias** (`resnet18`, `efficientnet_b0`, `convnext_tiny`, `vit_tiny`, `timm:<id>`) |
+| `--pretrained` / `--no-pretrained`, `--image-size N`, `--freeze-backbone` | timm backbone options |
+| `--seed N`, `--deterministic` | reproducibility (`training.seed`, `training.deterministic`) |
+| `--epochs`, `--batch-size`, `--lr`, `--num-workers` | quick overrides |
+| `--amp`, `--compile` | bf16/fp16 autocast, `torch.compile` (CUDA) |
+| `--resume` | continue from `<out>/<model>/<model>_last.pt` (scheduler is rebuilt for the current epoch budget) |
+| `--set KEY=VALUE` (repeatable) | override *any* config key, e.g. `--set augmentation.mixup=false` |
+| `--run-name`, `--mlflow`, `--wandb` | experiment naming / mirrors (files are always written) |
+| `--skip-best-selection` | don't copy to `models/best_model_weights/` (used by sweeps) |
+
+Each run directory contains `run.json`, `metrics.jsonl`, `<model>_best.pth`,
+`<model>_best_spec.json` and `<model>_last.pt`.
+
+Sweeps: `python src/cli/sweep.py {expand,run,status} sweeps/<name>.yaml`;
+aggregation: `python src/cli/aggregate.py runs/<name> --out results/<name>`;
+analysis: `python src/cli/evaluate.py ... --analysis --val_csv data/processed/fashion_mnist_val.csv`.
+See `cluster/README.md` for SLURM.
 
 ## 📋 Command Reference
 
 ### prepare_data.py
 
 ```bash
-python scripts/prepare_data.py [options]
+python src/cli/prepare_data.py [options]
 
 Options:
   --data-dir DIR          Raw data directory (default: ./data)
@@ -83,7 +107,7 @@ Options:
 ### train.py
 
 ```bash
-python scripts/train.py [options]
+python src/cli/train.py [options]
 
 Options:
   --config FILE           Config file path (default: config.yaml)
@@ -100,7 +124,7 @@ Options:
 ### finetune.py
 
 ```bash
-python scripts/finetune.py [options]
+python src/cli/finetune.py [options]
 
 Options:
   --config FILE           Config file path (default: config.yaml)
@@ -164,7 +188,7 @@ The pipeline automatically detects the best available device:
 ### Force CPU Usage
 
 ```bash
-python scripts/train.py --model resnet --force-cpu
+python src/cli/train.py --model resnet --force-cpu
 ```
 
 ---
@@ -206,19 +230,19 @@ results/evaluation/
 
 ```bash
 # 1. Prepare data
-python scripts/prepare_data.py
+python src/cli/prepare_data.py
 
 # 2. Train all models (will take ~30-60 minutes)
-python scripts/train.py --model all
+python src/cli/train.py --model all
 
 # 3. Fine-tune best model
-python scripts/finetune.py --model resnet \
+python src/cli/finetune.py --model resnet \
     --pretrained models/all_models/resnet/resnet_best.pth
 
 # 4. Evaluate
-python main.py \
+python src/cli/evaluate.py \
     --model_path models/all_models/resnet/resnet_best.pth \
-    --test_csv data_preparation/fashion_mnist_test.csv
+    --test_csv data/processed/fashion_mnist_test.csv
 ```
 
 ### Example 2: Quick Test (5 minutes)
@@ -227,7 +251,7 @@ python main.py \
 # Modify config.yaml: Set epochs: 2
 
 # Train single model
-python scripts/train.py --model minicnn
+python src/cli/train.py --model minicnn
 
 # Check results
 cat models/all_models/minicnn/minicnn_history.json
@@ -237,7 +261,7 @@ cat models/all_models/minicnn/minicnn_history.json
 
 ```bash
 # Train using existing CSV files
-python scripts/train.py --model resnet --use-csv \
+python src/cli/train.py --model resnet --use-csv \
     --train-csv path/to/train.csv \
     --val-csv path/to/val.csv \
     --test-csv path/to/test.csv
@@ -259,7 +283,7 @@ training:
 
 **Solution**: Use smaller model or reduce epochs:
 ```bash
-python scripts/train.py --model minicnn  # Faster than ResNet
+python src/cli/train.py --model minicnn  # Faster than ResNet
 ```
 
 Or modify `config.yaml`:

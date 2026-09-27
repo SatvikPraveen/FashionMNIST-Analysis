@@ -206,6 +206,13 @@ Sample predictions from the best TinyVGG model:
 | **Recall**    | 0.8993  | 0.9146 | **0.9321**         |
 | **F1-Score**  | 0.8992  | 0.9146 | **0.9321**         |
 
+> **Note (2026-09):** these are single-seed numbers from the original
+> pipeline, whose accuracy was a mean of per-batch accuracies (the recorded
+> 0.9321 is exactly 9336/10016, i.e. the 16-image final batch was weighted
+> like a full batch of 32). The trainer now reports true sample-level
+> accuracy, and the multi-seed results table will replace this one once the
+> sweeps in [`docs/RESEARCH_PLAN.md`](docs/RESEARCH_PLAN.md) have run.
+
 ---
 
 ## **🆕 New Features (2026)**
@@ -244,6 +251,46 @@ python src/cli/finetune.py \
 ```
 
 **📖 See [USAGE_GUIDE.md](docs/USAGE_GUIDE.md) for complete instructions**
+
+---
+
+## **🔬 Research Pipeline (2026-09)**
+
+The training stack was upgraded from a single-run demo to a reproducible,
+cluster-ready experiment pipeline. Everything below is covered by the
+`pytest` suite (99 tests).
+
+| Capability | Where |
+|---|---|
+| Global seeding (Python / NumPy / torch / CUDA / MPS / DataLoader workers / train-val split), `--deterministic` mode | `src/training/reproducibility.py` |
+| Sample-weighted accuracy (the old per-batch mean over-weighted the last partial batch) | `src/training/utils.py` |
+| One model registry for the custom CNNs **and any timm backbone** (`resnet18`, `resnet50`, `efficientnet_b0`, `convnext_tiny`, `vit_tiny`, `deit_small`, `timm:<id>`), pretrained or scratch, with a spec JSON next to every checkpoint so evaluation can rebuild it | `src/models/registry.py` |
+| AMP (bf16/fp16), `torch.compile`, grad clipping, label smoothing, AdamW, pre-emption-safe `--resume` | `src/training/trainer.py` |
+| Experiment tracking: `run.json` (git commit, config, host, SLURM ids, device) + `metrics.jsonl` per run; optional MLflow / W&B mirrors | `src/training/experiment.py` |
+| Sweeps → SLURM job arrays; aggregation to mean ± std with 95% CI | `src/cli/sweep.py`, `src/cli/aggregate.py`, `sweeps/`, `cluster/` |
+| Calibration (ECE, NLL, Brier, temperature scaling), per-class F1 and confusion pairs, robustness to 7 corruptions × 5 severities | `src/evaluation/analysis.py` |
+
+```bash
+# any config key can be overridden from the CLI
+python src/cli/train.py --model tinyvgg --seed 3 --amp --set training.label_smoothing=0.1
+
+# pretrained backbone at 224 px, head-only fine-tuning
+python src/cli/train.py --model vit_tiny --pretrained --freeze-backbone --epochs 10
+
+# multi-seed study: expand -> run (locally or as a SLURM array) -> aggregate
+python src/cli/sweep.py expand sweeps/baseline_seeds.yaml
+python src/cli/sweep.py run    sweeps/baseline_seeds.yaml --all        # laptop
+sbatch --array=0-14%8 cluster/slurm/train_array.sbatch sweeps/baseline_seeds.yaml   # cluster
+python src/cli/aggregate.py runs/baseline_seeds --out results/baseline_seeds
+
+# calibration / per-class / robustness report for a checkpoint
+python src/cli/evaluate.py --model_path runs/baseline_seeds/tinyvgg_seed0/tinyvgg/tinyvgg_best.pth \
+  --test_csv data/processed/fashion_mnist_test.csv --val_csv data/processed/fashion_mnist_val.csv --analysis
+```
+
+The study design (questions, sweeps, protocol, compute estimates) is in
+[`docs/RESEARCH_PLAN.md`](docs/RESEARCH_PLAN.md); the cluster workflow in
+[`cluster/README.md`](cluster/README.md).
 
 ---
 
@@ -326,6 +373,9 @@ Optional overrides:
 - **`--model_name`**: Force architecture (`ResNet`, `TinyVGG`, `MiniCNN`). Auto-detected if omitted.
 - **`--figures_dir`**: Override plot output directory (default: `figures/evaluation_plots`).
 - **`--results_dir`**: Override CSV output directory (default: `results/evaluation_results`).
+- **`--analysis`** (+ optional `--val_csv`): calibration (ECE, NLL, Brier, temperature scaling), per-class metrics and corruption robustness; writes `analysis.json` and four extra figures. `--no_robustness` skips the corruption sweep.
+
+Any checkpoint written by `train.py` carries a `_spec.json`, so timm backbones evaluate the same way as the custom CNNs.
 
 ---
 
@@ -385,6 +435,8 @@ You can access the full repository [here](https://github.com/SatvikPraveen/Fashi
 
 For comprehensive guides and documentation, please refer to the `docs/` folder:
 
+- **[RESEARCH_PLAN.md](docs/RESEARCH_PLAN.md)** - Research questions, sweeps, evaluation protocol and compute plan.
+- **[cluster/README.md](cluster/README.md)** - Running sweeps as SLURM job arrays.
 - **[FEATURES.md](docs/FEATURES.md)** - Complete feature documentation (800+ lines) covering all new modules and capabilities.
 - **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Deployment guide for Docker, Kubernetes, and cloud platforms.
 - **[IMPLEMENTATION_SUMMARY.md](docs/IMPLEMENTATION_SUMMARY.md)** - Detailed implementation report of the modernization project.
@@ -395,9 +447,10 @@ For comprehensive guides and documentation, please refer to the `docs/` folder:
 
 ## **Future Work**
 
-- Explore transfer learning with pretrained models like **ResNet50**, **EfficientNet**, or **Vision Transformers (ViTs)**.
-- Implement model ensembling for improved predictions.
-- Extend dimensionality reduction techniques like **t-SNE** and **UMAP** to more components and integrate them into end-to-end pipelines.
+- Run the four sweeps in `sweeps/` on a GPU cluster and replace the single-seed results table with mean ± CI numbers.
+- Drive `src/models/ensemble.py` from a sweep (ensemble of seeds per architecture).
+- Add Grad-CAM output to `evaluate.py --analysis`.
+- Re-run the traditional-ML baselines with seeds for a fair comparison table.
 - Test the best model on unseen real-world data.
 
 ---
