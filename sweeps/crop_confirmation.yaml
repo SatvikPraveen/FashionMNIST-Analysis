@@ -1,0 +1,20 @@
+# Confirmatory test of the augmentation-ablation finding that padded random
+# cropping hurts accuracy (TinyVGG, seeds 0-4, p = 0.018).
+#
+# Two changes vs the ablation, to rule out the obvious alternatives:
+#   * FRESH seeds 5-9, so the confirmation is not evaluated on the seeds that
+#     produced the finding.
+#   * A longer budget (150 epochs, patience 15) to test whether the crop
+#     penalty is just under-training under the original 75-epoch cap.
+# All three custom CNNs, so the result is not TinyVGG-specific.
+# 3 models x 2 variants x 5 seeds = 30 runs. Analyse per model with
+#   aggregate.py runs/crop_confirmation --baseline '<model>|full'
+name: crop_confirmation
+output_root: runs/crop_confirmation
+models: [minicnn, tinyvgg, resnet]
+seeds: [5, 6, 7, 8, 9]
+base_args: ["--amp", "--epochs", "150", "--set", "training.early_stopping_patience=15"]
+variants:
+  full: {}
+  no_crop:
+    augmentation.random_crop: false

@@ -232,6 +232,31 @@ TinyVGG's. MiniCNN is clearly behind both. TinyVGG remains the best
 accuracy per parameter by a wide margin (80× fewer parameters than ResNet
 for a statistically indistinguishable result).
 
+### Augmentation ablation (TinyVGG, 5 seeds per variant, 2026-09-27)
+
+One component removed at a time from the `config.yaml` recipe. Because every
+variant uses the same seeds 0–4, differences are tested **paired by seed**
+(`aggregate.py --baseline 'tinyvgg|full'`), which removes seed-to-seed noise.
+Raw data: [runs](results/sweeps/augmentation_ablation_runs.csv),
+[paired table](results/sweeps/augmentation_ablation_paired.md).
+
+| Variant | Test acc (mean ± std) | Δ vs full (paired) | 95% CI of Δ | p | Seeds better |
+|---|---|---|---|---|---|
+| no random crop | 0.9333 ± 0.0047 | **+0.0095** | [+0.0027, +0.0162] | **0.018** | 5 / 5 |
+| no rotation | 0.9293 ± 0.0052 | +0.0055 | [−0.0047, +0.0157] | 0.211 | 4 / 5 |
+| no horizontal flip | 0.9258 ± 0.0047 | +0.0020 | [−0.0088, +0.0129] | 0.629 | 3 / 5 |
+| full recipe | 0.9238 ± 0.0072 | — | — | — | — |
+| no Mixup/CutMix | 0.9229 ± 0.0062 | −0.0009 | [−0.0144, +0.0126] | 0.863 | 3 / 5 |
+| no augmentation | 0.9173 ± 0.0015 | −0.0065 | [−0.0160, +0.0029] | 0.127 | 1 / 5 |
+
+**Finding.** Padded random cropping (pad 4, crop 28) *hurts* TinyVGG: removing
+it improved accuracy on every seed. No other single component has a detectable
+effect at n = 5, and the full recipe beats no augmentation by only 0.65 points
+(not significant). **Caveat:** the full recipe trained longest (60 epochs on
+average vs a 75-epoch cap), so part of the crop penalty may be an
+under-training effect of the fixed budget. `sweeps/crop_confirmation.yaml`
+tests this on all three models with fresh seeds and a longer budget.
+
 ---
 
 ## Updates (2026)
