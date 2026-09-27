@@ -114,3 +114,6 @@ cluster/local/
 
 # Aggregation output written on the cluster; copied into results/sweeps/ from the laptop
 results/cluster/
+
+# Per-run sweep results are small and are the raw data behind the README tables
+!results/sweeps/*.csv
