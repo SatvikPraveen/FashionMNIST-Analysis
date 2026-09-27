@@ -1,8 +1,8 @@
 # Research plan: what does a modern training recipe buy on a small grayscale benchmark?
 
 **Status (2026-09-27):** infrastructure complete and running on a SLURM GPU cluster.
-Q1–Q5 and seed ensembles answered on the legacy augmentation pipeline;
-an augmentation bug was found and the affected sweeps are being re-run. Full result tables live in the README and `results/sweeps/`.
+all questions answered, and every affected result re-run on the fixed
+augmentation pipeline. See the README for the full write-up. Full result tables live in the README and `results/sweeps/`.
 
 Fashion-MNIST is small enough to run hundreds of controlled experiments and
 well-studied enough that the literature gives clear reference points
@@ -20,7 +20,7 @@ heavy augmentation or ensembles). That makes it a good testbed for an
 | # | Question | Sweep | Runs | Primary metric |
 |---|---|---|---|---|
 | Q1 | How much seed variance do the existing baselines have? Are the reported differences between MiniCNN / TinyVGG / ResNet real? | `sweeps/baseline_seeds.yaml` | 15 | test acc mean ± std, 95% CI |
-| Q2 | Do ImageNet-pretrained backbones help on 28 px grayscale data, and does the answer differ for CNNs vs ViTs? | `sweeps/backbones.yaml` | 24 | test acc, params, time/run |
+| Q2 | Pretraining helps every family (paired, p ≤ 0.028, 3/3 seeds each): ViT-Tiny +15.6, EfficientNet-B0 +3.8, ConvNeXt-Tiny +3.2, ResNet-18 +1.3 points. Best model: pretrained ViT-Tiny, 0.9528 ± 0.0009 on the fixed pipeline (unchanged by the fix). ViT from scratch collapses (0.80). Crop helps ViT slightly (−0.34 without it, p = 0.027). | `results/sweeps/backbones_*` |
 | Q3 | Which augmentation components matter? | `sweeps/augmentation_ablation.yaml` | 30 | Δ test acc vs full recipe |
 | Q4 | Is the default LR / weight decay near-optimal for the small CNNs? | `sweeps/lr_grid.yaml` | 18 | test acc |
 | Q5 | Are the more accurate models also better calibrated and more robust? | `evaluate.py --analysis` on each Q1/Q2 winner | – | ECE, NLL, mean corruption error |

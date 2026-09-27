@@ -1,0 +1,5 @@
+group,model,variant,n,test_acc_mean,test_acc_std,test_acc_ci95,test_acc_min,test_acc_max,seeds,mean_train_time_sec,num_parameters
+vit_tiny|pretrained,vit_tiny_patch16_224,pretrained,3,0.9528,0.0008717797887081023,0.0021657958383312554,0.9522,0.9538,"[0, 1, 2]",889.3416261672974,5428042
+convnext_tiny|pretrained,convnext_tiny,pretrained,3,0.9503,0.0007937253933194157,0.0019718823215395935,0.9497,0.9512,"[0, 1, 2]",793.4899028937022,27824746
+convnext_tiny|pretrained_no_crop,convnext_tiny,pretrained_no_crop,3,0.9496666666666668,0.0007023769168568825,0.0017449418111916322,0.949,0.9504,"[0, 1, 2]",1102.864057858785,27824746
+vit_tiny|pretrained_no_crop,vit_tiny_patch16_224,pretrained_no_crop,3,0.9494333333333334,0.0012423096769056403,0.0030863173969060335,0.948,0.9502,"[0, 1, 2]",970.916569073995,5428042

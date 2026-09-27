@@ -22,8 +22,8 @@ per-epoch curves, and every table links to the raw per-run data in
 
 | Model | Test accuracy | Params | Notes |
 |---|---|---|---|
-| Pretrained ViT-Tiny/16 (224 px) | **0.9525 ± 0.0025** | 5.4M | ImageNet weights via timm; 3 seeds¹ |
-| Pretrained ConvNeXt-Tiny | 0.9506 ± 0.0012 | 27.8M | 3 seeds¹ |
+| Pretrained ViT-Tiny/16 (224 px) | **0.9528 ± 0.0009** | 5.4M | ImageNet weights via timm; 3 seeds |
+| Pretrained ConvNeXt-Tiny | 0.9503 ± 0.0008 | 27.8M | 3 seeds |
 | 5-seed ensemble of TinyVGG, no random crop | 0.9421 | 5 × 0.14M | best result without pretraining |
 | ResNet-18 (custom, from scratch) | 0.9412 ± 0.0018 | 11.2M | best single model without pretraining |
 | TinyVGG, no random crop | 0.9362 ± 0.0036 | 0.14M | best recipe for the small CNNs |
@@ -32,9 +32,8 @@ per-epoch curves, and every table links to the raw per-run data in
 | MiniCNN, default recipe | 0.9090 ± 0.0042 | 0.11M | |
 | Best classical model (kNN on PCA features) | 0.8576 | – | single run, from the notebooks |
 
-¹ Measured before the augmentation fix described in
-[Methods and corrections](#methods-and-corrections); a re-run on the fixed
-pipeline is in progress. All other rows use the fixed pipeline.
+All rows use the corrected augmentation pipeline described in
+[Methods and corrections](#methods-and-corrections).
 
 ## Main findings
 
@@ -47,8 +46,8 @@ pipeline is in progress. All other rows use the fixed pipeline.
    single-seed claim that TinyVGG was best does not hold.
 3. **Whether random cropping helps depends on model capacity.** Removing
    the padded random crop gains +1.5 points for MiniCNN and +1.0 for TinyVGG
-   (both about 0.1M parameters) but costs ResNet-18 (11M) 0.5 points, on
-   every seed. Removing rotation also helps TinyVGG (+0.6). Fashion-MNIST
+   (both about 0.1M parameters) but costs ResNet-18 (11M) 0.5 points and
+   pretrained ViT-Tiny (5.4M) 0.3 points, on every seed. Removing rotation also helps TinyVGG (+0.6). Fashion-MNIST
    items are centred and size-normalised, so shifts mostly add noise for a
    small model, while a large one benefits from the regularisation.
 4. **Seed ensembles add 0.6 to 1.8 points, but can harm calibration.**
@@ -132,7 +131,7 @@ research questions and protocol.
 | `lr_grid` | Is the default learning rate / weight decay near-optimal? | 18 |
 | `crop_confirmation` | Does the crop penalty survive fresh seeds and a longer budget? | 25 |
 | `crop_generalization` | Does the crop effect hold for MiniCNN and ResNet? | 10 |
-| `backbones_fixed` | The best pretrained backbones on the fixed pipeline | 12 (running) |
+| `backbones_fixed` | The best pretrained backbones on the fixed pipeline, with and without crop | 12 |
 | `baseline_seeds`, `augmentation_ablation` | The same questions on the pre-fix pipeline, kept for the record | 45 |
 
 ---
@@ -203,7 +202,9 @@ paired against the default recipe on seeds 0–4
 
 The effect reverses with capacity: cropping costs the two small CNNs
 accuracy but is worth 0.5 points to ResNet, which is large enough to use it
-as regularisation.
+as regularisation. The same holds for the pretrained backbones (next
+section): cropping is worth 0.34 points to ViT-Tiny (p = 0.027, 3/3 seeds)
+and makes no difference to ConvNeXt-Tiny.
 
 ### Pretrained backbones versus training from scratch
 
@@ -211,8 +212,8 @@ timm backbones built with `in_chans=1`; 28 px inputs upsampled to 64 px for
 CNNs and 224 px for ViT; AdamW, 30 epochs, three seeds, paired by seed
 against the same backbone from scratch
 ([summary](results/sweeps/backbones_summary.md),
-[runs](results/sweeps/backbones_runs.csv)). Pre-fix augmentation pipeline;
-the pretrained-versus-scratch pairs share the same pipeline.
+[runs](results/sweeps/backbones_runs.csv)). This comparison ran on the
+pre-fix augmentation pipeline; each pretrained-versus-scratch pair shares it.
 
 | Backbone | Params | Pretrained | From scratch | Δ from pretraining | p | Time / run |
 |---|---|---|---|---|---|---|
@@ -225,6 +226,23 @@ Pretraining helps every family on every seed, even for 28 px grayscale
 clothing. Trained from scratch, the ViT is also very unstable across seeds,
 the familiar result that ViTs lack the inductive bias to learn well from
 48,000 small images alone.
+
+**The two best backbones on the fixed pipeline**, with and without random
+crop, same seeds 0–2
+([summary](results/sweeps/backbones_fixed_summary.md),
+[runs](results/sweeps/backbones_fixed_runs.csv),
+paired: [ViT](results/sweeps/backbones_fixed_vs_vit_tiny_paired.md),
+[ConvNeXt](results/sweeps/backbones_fixed_vs_convnext_tiny_paired.md)):
+
+| Backbone, pretrained | Pre-fix pipeline | Fixed pipeline | Δ from fix | Fixed, no crop | Δ from removing crop | p |
+|---|---|---|---|---|---|---|
+| ViT-Tiny/16 | 0.9525 ± 0.0025 | **0.9528 ± 0.0009** | +0.0003 (p = 0.86) | 0.9494 ± 0.0012 | −0.0034 | 0.027 |
+| ConvNeXt-Tiny | 0.9506 ± 0.0012 | 0.9503 ± 0.0008 | −0.0003 (p = 0.82) | 0.9497 ± 0.0007 | −0.0006 | 0.532 |
+
+The augmentation bug did not affect the pretrained models, whose accuracy is
+unchanged and whose seed spread shrinks. Random cropping helps ViT-Tiny
+slightly and is neutral for ConvNeXt, consistent with the capacity pattern
+in the ablation.
 
 ### Seed ensembles and calibration
 
@@ -352,8 +370,9 @@ Augmentation is now drawn per image with a black fill, and
 which is how the fix was measured: re-running a pre-fix configuration
 reproduced its original test accuracy to four decimal places. The fix gains
 +1.55 points for ResNet, +0.89 for MiniCNN and +0.36 to +0.48 for TinyVGG.
-The fix changed one conclusion (ResNet versus TinyVGG) and none of the
-augmentation or ensemble findings, which replicate on the fixed pipeline.
+The fix did not change the pretrained backbones' accuracy. It changed one
+conclusion (ResNet versus TinyVGG) and none of the augmentation or ensemble
+findings, which replicate on the fixed pipeline.
 Tables that still use pre-fix runs are marked as such.
 
 **Original single-seed results**, from the notebooks and kept for reference.
@@ -447,8 +466,6 @@ The original exploratory workflow, kept for reference:
 
 ## Future work
 
-- Finish the running re-run of the best pretrained backbones on the fixed
-  pipeline.
 - Map where the crop effect flips sign, for example with ResNets of
   intermediate width.
 - Test whether batch normalisation explains ResNet's contrast and brightness
