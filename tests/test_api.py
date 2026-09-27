@@ -66,3 +66,26 @@ def test_predict_accepts_grayscale_rgb_and_rgba(client, shape):
 def test_health(client):
     c, _ = client
     assert c.get("/health").json()["model_loaded"] is True
+
+
+def test_initialize_uses_best_model_info_without_spec(tmp_path):
+    """The shipped best model has best_model_info.json but no _spec.json."""
+    import json
+    d = tmp_path / "best_model_weights"; d.mkdir()
+    torch.manual_seed(0)
+    torch.save(build_model("tinyvgg").state_dict(), d / "best_model_weights.pth")
+    (d / "best_model_info.json").write_text(json.dumps({"model_name": "tinyvgg"}))
+    c = TestClient(app)
+    r = c.post("/initialize", params={"model_path": str(d / "best_model_weights.pth"), "config_path": "config.yaml"})
+    assert r.status_code == 200, r.text
+    assert r.json()["model_info"]["model_name"] == "tinyvgg"
+
+
+def test_failed_initialize_does_not_install_a_model(tmp_path):
+    from src.serving import api as api_mod
+    api_mod.model_state.model = None
+    bad = tmp_path / "resnet_best.pth"; bad.write_bytes(b"not a checkpoint")
+    c = TestClient(app)
+    r = c.post("/initialize", params={"model_path": str(bad), "config_path": "config.yaml"})
+    assert r.status_code == 500
+    assert api_mod.model_state.model is None

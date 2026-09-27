@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import torch
 import logging
+import json
 import os
 from typing import List, Optional
 from pydantic import BaseModel
@@ -136,7 +137,7 @@ async def initialize_model(
         from src.serving.inference import ImagePreprocessor, RealWorldInference
         from src.models.architectures import ResNet, BasicBlock
         from src.models.transfer import TransferLearningModel
-        from src.models.registry import load_model_from_checkpoint, spec_path_for, ModelSpec
+        from src.models.registry import load_model_from_checkpoint, spec_path_for, ModelSpec, build_model
         
         # Load config
         model_state.config = load_config(config_path)
@@ -163,17 +164,24 @@ async def initialize_model(
                 device=device
             )
         else:
-            # Rebuild the exact architecture from <weights>_spec.json (written by
-            # train.py); fall back to the custom ResNet for older checkpoints.
+            # Rebuild the exact architecture: from <weights>_spec.json (written by
+            # train.py), else from best_model_info.json in the same folder (the
+            # shipped best model), else the custom ResNet for older checkpoints.
+            # The model is installed only after it has loaded successfully.
+            info_path = os.path.join(os.path.dirname(model_path), "best_model_info.json")
             if os.path.exists(spec_path_for(model_path)):
-                model_state.model = load_model_from_checkpoint(model_path, map_location=device)
-                model_state.model_name = ModelSpec.load(spec_path_for(model_path)).name
+                model = load_model_from_checkpoint(model_path, map_location=device)
+                name = ModelSpec.load(spec_path_for(model_path)).name
             else:
-                model_state.model = ResNet(BasicBlock, [2, 2, 2, 2],
-                                           num_classes=model_state.config.model.num_classes)
-                model_state.model.load_state_dict(
-                    torch.load(model_path, map_location=device, weights_only=True)
-                )
+                if os.path.exists(info_path):
+                    with open(info_path) as f:
+                        name = json.load(f)["model_name"]
+                else:
+                    name = "resnet"
+                model = build_model(name, num_classes=model_state.config.model.num_classes)
+                model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
+            model_state.model = model
+            model_state.model_name = name
             model_state.model = model_state.model.to(device).eval()
             # Every project model takes 28x28 grayscale, Fashion-MNIST-normalised input
             model_state.preprocessor = ImagePreprocessor.for_fashion_mnist(device=device)

@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # FastAPI Backend Service
   api:
@@ -84,14 +82,17 @@ services:
       dockerfile: docker/Dockerfile
     container_name: fashionmnist-jupyter
     ports:
-      - "8888:8888"
+      # Localhost only: Jupyter executes arbitrary code for anyone who can reach it
+      - "127.0.0.1:8888:8888"
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
       - JUPYTER_ENABLE_LAB=yes
+      # Set JUPYTER_TOKEN in your shell or an .env file; the URL with the token is in `docker compose logs jupyter`
+      - JUPYTER_TOKEN=${JUPYTER_TOKEN:-}
     volumes:
       - ../:/app
-    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=''
+    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root
     networks:
       - fashionmnist-network
     restart: unless-stopped
@@ -99,8 +100,3 @@ services:
 networks:
   fashionmnist-network:
     driver: bridge
-
-volumes:
-  fashionmnist-data:
-  fashionmnist-models:
-  fashionmnist-logs:
