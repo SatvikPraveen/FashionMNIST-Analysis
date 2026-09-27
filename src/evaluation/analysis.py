@@ -194,8 +194,17 @@ def c_gaussian_noise(x, s):  # x in [0,1]
 
 def c_gaussian_blur(x, s):
     sigma = [0.4, 0.6, 0.8, 1.0, 1.3][s - 1]
-    k = _gaussian_kernel(sigma).to(x)
-    return F.conv2d(F.pad(x, (2, 2, 2, 2), mode="reflect"), k)
+    k = _gaussian_kernel(sigma).to(x)[0, 0]          # (5, 5)
+    xp = F.pad(x, (2, 2, 2, 2), mode="reflect")
+    # Explicit shifted sum rather than F.conv2d: some CPU builds (oneDNN on
+    # torch 2.11) fail with "could not create a primitive" for this tiny
+    # single-channel conv, and 25 slices is cheap.
+    h, w = x.shape[-2:]
+    out = torch.zeros_like(x)
+    for i in range(5):
+        for j in range(5):
+            out = out + k[i, j] * xp[..., i:i + h, j:j + w]
+    return out
 
 
 def c_contrast(x, s):
