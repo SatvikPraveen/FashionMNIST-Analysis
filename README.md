@@ -232,6 +232,27 @@ TinyVGG's. MiniCNN is clearly behind both. TinyVGG remains the best
 accuracy per parameter by a wide margin (80× fewer parameters than ResNet
 for a statistically indistinguishable result).
 
+**Calibration and robustness of the same 15 checkpoints**
+(`src/cli/analyze_runs.py`; temperature fitted on each run's own validation
+split; robustness = error under 7 corruptions × 5 severities;
+[summary](results/sweeps/baseline_seeds_analysis_summary.md),
+[per run](results/sweeps/baseline_seeds_analysis_runs.csv)):
+
+| Model | ECE | ECE after T | T | Mean corruption error | Contrast err | Brightness err | Noise err |
+|---|---|---|---|---|---|---|---|
+| ResNet-18 (custom) | 0.015 ± 0.012 | 0.009 | 0.86 | **0.272 ± 0.010** | **0.265** | **0.293** | 0.529 |
+| TinyVGG | 0.012 ± 0.002 | 0.009 | 0.86 | 0.310 ± 0.022 | 0.437 | 0.456 | 0.509 |
+| MiniCNN | 0.015 ± 0.002 | 0.010 | 0.84 | 0.338 ± 0.017 | 0.510 | 0.533 | **0.403** |
+
+All three are already well calibrated, and slightly *under*confident
+(T < 1), the usual signature of Mixup/CutMix training. The robustness
+column changes the ResNet-vs-TinyVGG picture: they tie on clean accuracy,
+but ResNet is clearly more robust, almost entirely because it tolerates
+contrast and brightness shifts far better. ResNet is the only one of the
+three with batch normalisation, which is a plausible (untested) cause.
+MiniCNN is, oddly, the most robust to Gaussian noise. The top confusion for
+every model is Shirt ↔ T-shirt/top.
+
 ### Augmentation ablation (TinyVGG, 5 seeds per variant, 2026-09-27)
 
 One component removed at a time from the `config.yaml` recipe. Because every
