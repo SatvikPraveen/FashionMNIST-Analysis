@@ -1,0 +1,16 @@
+# Pretrained vs random-init timm backbones at the family-default resolution
+# (64px for CNNs, 224px for ViT). 4 backbones x 2 variants x 3 seeds = 24 runs.
+name: backbones
+output_root: runs/backbones
+models: [resnet18, efficientnet_b0, convnext_tiny, vit_tiny]
+seeds: [0, 1, 2]
+base_args: ["--amp", "--epochs", "30"]
+variants:
+  pretrained:
+    model.pretrained: true
+    training.learning_rate: 3.0e-4
+    training.optimizer: adamw
+  scratch:
+    model.pretrained: false
+    training.learning_rate: 1.0e-3
+    training.optimizer: adamw

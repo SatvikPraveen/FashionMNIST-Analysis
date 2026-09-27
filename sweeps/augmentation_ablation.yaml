@@ -1,0 +1,20 @@
+# Which parts of the augmentation recipe matter? One knob removed at a time,
+# on the best custom CNN, 5 seeds each. 6 variants x 5 seeds = 30 runs.
+name: augmentation_ablation
+output_root: runs/augmentation_ablation
+models: [tinyvgg]
+seeds: [0, 1, 2, 3, 4]
+base_args: ["--amp"]
+variants:
+  full: {}
+  no_aug:
+    augmentation.enabled: false
+  no_mixup_cutmix:
+    augmentation.mixup: false
+    augmentation.cutmix: false
+  no_crop:
+    augmentation.random_crop: false
+  no_flip:
+    augmentation.horizontal_flip: false
+  no_rotation:
+    augmentation.rotation: 0

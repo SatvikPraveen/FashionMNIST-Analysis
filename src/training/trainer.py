@@ -609,7 +609,17 @@ def train_model(
     return history
 
 
-def main():
+def apply_overrides(config, overrides) -> None:
+    """Apply ``key.path=value`` overrides (values parsed as YAML) to a Config."""
+    import yaml
+    for item in overrides or []:
+        if "=" not in item:
+            raise ValueError(f"--set expects key=value, got '{item}'")
+        key, _, raw = item.partition("=")
+        config.set(key.strip(), yaml.safe_load(raw))
+
+
+def main(argv=None):
     parser = argparse.ArgumentParser(description="Train FashionMNIST models")
     parser.add_argument(
         "--config",
@@ -751,12 +761,27 @@ def main():
         action="store_true",
         help="Mirror metrics to Weights & Biases (monitoring.wandb_enabled)"
     )
+    parser.add_argument(
+        "--set",
+        dest="overrides",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help=("Override any config key, e.g. --set training.label_smoothing=0.1 "
+              "--set augmentation.mixup=false (repeatable; values parsed as YAML)")
+    )
+    parser.add_argument(
+        "--skip-best-selection",
+        action="store_true",
+        help="Do not copy the best model to models/best_model_weights/ (sweeps)"
+    )
     
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     
     # Load config
     logger.info("Loading configuration...")
     config = load_config(args.config)
+    apply_overrides(config, args.overrides)
 
     # Seed everything before any model / data code runs
     seed = args.seed if args.seed is not None else int(config.get('training.seed', 42))
@@ -876,6 +901,10 @@ def main():
 
     logger.info(f"{'='*60}\n")
 
+    if args.skip_best_selection:
+        logger.info("🎉 All training complete! (best-model selection skipped)")
+        return all_results
+
     # ── Best model selection ───────────────────────────────────────────────────
     # Pick the model with the highest test accuracy and copy its weights to
     # models/best_model_weights/best_model_weights.pth
@@ -918,6 +947,7 @@ def main():
     logger.info(f"   Info:     {info_path}")
     logger.info(f"{'='*60}\n")
     logger.info("🎉 All training complete!")
+    return all_results
 
 
 if __name__ == "__main__":

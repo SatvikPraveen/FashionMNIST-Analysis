@@ -1,0 +1,7 @@
+# Multi-seed baseline for the three custom CNNs.
+# 3 models x 5 seeds = 15 runs. Reports mean ± std test accuracy.
+name: baseline_seeds
+output_root: runs/baseline_seeds
+models: [minicnn, tinyvgg, resnet]
+seeds: [0, 1, 2, 3, 4]
+base_args: ["--amp"]

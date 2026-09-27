@@ -1,0 +1,22 @@
+# Minimal dependency set for training / evaluation on a cluster node.
+# (The full requirements.txt also pulls in Streamlit, Gradio, FastAPI, SHAP,
+#  transformers, ... which are not needed for batch jobs.)
+#
+# Install torch first with the CUDA build matching the cluster's driver, e.g.
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+# then:
+#   pip install -r cluster/requirements-cluster.txt
+numpy>=1.24.0
+pandas>=2.0.0
+pyyaml>=6.0
+scikit-learn>=1.0.0
+matplotlib>=3.5.0
+seaborn>=0.11.0
+tqdm>=4.60.0
+pillow>=9.0.0
+timm>=0.9.0
+# optional experiment mirrors
+# mlflow>=2.0.0
+# wandb>=0.14.0
+# tests
+pytest>=7.4.0

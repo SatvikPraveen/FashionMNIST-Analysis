@@ -104,3 +104,7 @@ tests/*.csv
 
 # Docker
 .dockerignore
+
+# Sweep outputs and shared model/dataset caches (cluster)
+runs/
+.cache/

@@ -1,0 +1,6 @@
+# Tiny end-to-end check of the sweep machinery (2 runs, 1 epoch each).
+name: smoke
+output_root: runs/smoke
+models: [tinyvgg]
+seeds: [0, 1]
+base_args: ["--epochs", "1", "--batch-size", "256"]
