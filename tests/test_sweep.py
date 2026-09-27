@@ -78,6 +78,18 @@ class TestArgv:
         with pytest.raises(SystemExit):
             sw.main(["run", path, "--index", "5", "--dry-run"])
 
+    def test_run_forwards_extra_args_after_double_dash(self, tmp_path, capsys):
+        """Exactly what the sbatch scripts do: run ... -- --num-workers 8."""
+        path = _sweep_file(tmp_path, seeds=[0])
+        assert sw.main(["run", path, "--index", "0", "--dry-run", "--", "--num-workers", "8", "--amp"]) == 0
+        out = capsys.readouterr().out
+        assert "--num-workers 8 --amp" in out
+
+    def test_expand_rejects_stray_args(self, tmp_path):
+        path = _sweep_file(tmp_path, seeds=[0])
+        with pytest.raises(SystemExit):
+            sw.main(["expand", path, "--bogus"])
+
     def test_status_pending(self, tmp_path, capsys):
         path = _sweep_file(tmp_path, seeds=[0])
         assert sw.main(["status", path]) == 0

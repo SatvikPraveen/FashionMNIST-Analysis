@@ -201,12 +201,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     g.add_argument("--all", action="store_true", help="run every row sequentially")
     pr.add_argument("--only-pending", action="store_true", help="with --all: skip finished rows")
     pr.add_argument("--dry-run", action="store_true", help="print commands only")
-    pr.add_argument("extra", nargs="*", help="extra args after '--' passed to train.py")
 
     ps = sub.add_parser("status", help="show finished / failed / pending rows")
     ps.add_argument("sweep")
 
-    args = p.parse_args(argv)
+    # Anything the sub-parsers don't recognise (typically after a literal
+    # '--') is forwarded verbatim to train.py. argparse's own '--' handling
+    # is unreliable inside sub-parsers, so it is done by hand here.
+    args, unknown = p.parse_known_args(argv)
+    extra = [a for a in unknown if a != "--"]
+    if extra and args.cmd != "run":
+        p.error(f"unrecognized arguments: {' '.join(extra)}")
     sweep = load_sweep(args.sweep)
 
     if args.cmd == "expand":
@@ -235,7 +240,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 raise SystemExit(f"--index {args.index} out of range 0-{len(rows) - 1}")
             todo = [rows[args.index]]
         for r in todo:
-            run_row(sweep, r, args.extra, dry_run=args.dry_run)
+            run_row(sweep, r, extra, dry_run=args.dry_run)
         return 0
     return 1
 
