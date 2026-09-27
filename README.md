@@ -212,7 +212,19 @@ Sample predictions from the best TinyVGG model:
 > like a full batch of 32). The trainer now reports true sample-level
 > accuracy. The multi-seed table below supersedes this one.
 
-### Multi-seed baseline (5 seeds each, 2026-09-27)
+> **⚠ Augmentation bug found on 2026-09-27 (fixed in `a341854`).** Every
+> *augmented* run in the tables below used an augmentation pipeline that
+> (1) applied one random crop / flip / rotation to the **whole batch** instead
+> of per image, and (2) padded crops and rotations with **mid-grey** instead of
+> the black background. The results are reported as measured, but any
+> conclusion about augmentation — including "random crop hurts" and the
+> ensemble-calibration interaction — may be an artefact of the bug. They are
+> being re-run on the fixed pipeline with the old pipeline as an explicit
+> control (`sweeps/augmentation_fixed.yaml`, `sweeps/baseline_fixed.yaml`).
+> The `no_aug` rows and the LR grid's *relative* conclusions are unaffected in
+> kind, but all absolute augmented numbers should be read as "legacy pipeline".
+
+### Multi-seed baseline (5 seeds each, 2026-09-27, legacy augmentation pipeline)
 
 Official 10,000-image test set, best-validation checkpoint evaluated once
 per run, bf16 mixed precision, full augmentation recipe from `config.yaml`.
@@ -253,7 +265,7 @@ three with batch normalisation, which is a plausible (untested) cause.
 MiniCNN is, oddly, the most robust to Gaussian noise. The top confusion for
 every model is Shirt ↔ T-shirt/top.
 
-### Augmentation ablation (TinyVGG, 5 seeds per variant, 2026-09-27)
+### Augmentation ablation (TinyVGG, 5 seeds per variant, 2026-09-27, legacy pipeline)
 
 One component removed at a time from the `config.yaml` recipe. Because every
 variant uses the same seeds 0–4, differences are tested **paired by seed**
@@ -275,10 +287,19 @@ it improved accuracy on every seed. No other single component has a detectable
 effect at n = 5, and the full recipe beats no augmentation by only 0.65 points
 (not significant). **Caveat:** the full recipe trained longest (60 epochs on
 average vs a 75-epoch cap), so part of the crop penalty may be an
-under-training effect of the fixed budget. `sweeps/crop_confirmation.yaml`
-tests this on all three models with fresh seeds and a longer budget.
+under-training effect of the fixed budget.
 
-### Seed ensembles (5 members per group, 2026-09-27)
+**Robustness of the ablation checkpoints**
+([summary](results/sweeps/augmentation_ablation_analysis_summary.md)) points
+at the cause. With crop the model is robust to translation (error 0.176 vs
+0.432 without) but fragile to contrast (0.439 vs 0.237), brightness (0.449 vs
+0.260) and noise (0.520 vs 0.367); mean corruption error is 0.312 with crop
+and 0.263 without. That pattern led to the augmentation code, where the
+crop's padding turned out to be mid-grey rather than black, and applied
+per batch rather than per image (see the warning above). The crop result is
+therefore most likely a symptom of the bug, and is being re-tested.
+
+### Seed ensembles (5 members per group, 2026-09-27, legacy pipeline)
 
 Softmax average of the five seed checkpoints of each group on the official
 test set (`src/cli/ensemble_runs.py`;
@@ -304,7 +325,7 @@ and Data Augmentation Can Harm Your Calibration* (ICLR 2021) on this benchmark.
 disagree most (14.6% of test images) and gain most, so the no-augmentation
 ensemble matches the full-recipe ensemble.
 
-### Learning rate × weight decay (TinyVGG, 3 seeds per cell, 2026-09-27)
+### Learning rate × weight decay (TinyVGG, 3 seeds per cell, 2026-09-27, legacy pipeline)
 
 Adam, cosine schedule, full augmentation recipe. Paired by seed against the
 `config.yaml` default (LR 1e-3, WD 1e-4). Raw data:

@@ -1,0 +1,30 @@
+# Augmentation ablation re-run on the FIXED pipeline (per-sample draws,
+# black background fill; see commit a341854), with the old buggy pipeline
+# as an explicit control so the bug's effect is measured, not assumed.
+#
+# Same seeds 0-4 as sweeps/augmentation_ablation.yaml, so every variant can
+# be paired by seed with its legacy counterpart and with the fixed 'full'.
+# 7 variants x 5 seeds = 35 runs.
+#   aggregate.py runs/augmentation_fixed --baseline 'tinyvgg|full'
+#   aggregate.py runs/augmentation_fixed --baseline 'tinyvgg|legacy'
+name: augmentation_fixed
+output_root: runs/augmentation_fixed
+models: [tinyvgg]
+seeds: [0, 1, 2, 3, 4]
+base_args: ["--amp"]
+variants:
+  legacy:                         # exactly the pre-fix behaviour
+    augmentation.legacy_batch_mode: true
+    augmentation.fill: 0.0
+  full: {}
+  no_crop:
+    augmentation.random_crop: false
+  no_rotation:
+    augmentation.rotation: 0
+  no_flip:
+    augmentation.horizontal_flip: false
+  no_mixup_cutmix:
+    augmentation.mixup: false
+    augmentation.cutmix: false
+  no_aug:
+    augmentation.enabled: false

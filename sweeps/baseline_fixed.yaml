@@ -1,0 +1,9 @@
+# The three custom CNNs on the FIXED augmentation pipeline, same seeds 0-4
+# as sweeps/baseline_seeds.yaml (which used the buggy pipeline), so each
+# model can be compared to its own legacy numbers seed by seed.
+# 3 models x 5 seeds = 15 runs.
+name: baseline_fixed
+output_root: runs/baseline_fixed
+models: [minicnn, tinyvgg, resnet]
+seeds: [0, 1, 2, 3, 4]
+base_args: ["--amp"]
