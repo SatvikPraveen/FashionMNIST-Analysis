@@ -210,8 +210,27 @@ Sample predictions from the best TinyVGG model:
 > pipeline, whose accuracy was a mean of per-batch accuracies (the recorded
 > 0.9321 is exactly 9336/10016, i.e. the 16-image final batch was weighted
 > like a full batch of 32). The trainer now reports true sample-level
-> accuracy, and the multi-seed results table will replace this one once the
-> sweeps in [`docs/RESEARCH_PLAN.md`](docs/RESEARCH_PLAN.md) have run.
+> accuracy. The multi-seed table below supersedes this one.
+
+### Multi-seed baseline (5 seeds each, 2026-09-27)
+
+Official 10,000-image test set, best-validation checkpoint evaluated once
+per run, bf16 mixed precision, full augmentation recipe from `config.yaml`.
+Produced by `sweeps/baseline_seeds.yaml` → `src/cli/aggregate.py`
+([raw per-run CSV](results/sweeps/baseline_seeds_runs.csv)).
+
+| Model | n | Test acc (mean ± std) | 95% CI | min | max | Params | Time / run |
+|---|---|---|---|---|---|---|---|
+| ResNet-18 (custom) | 5 | 0.9256 ± 0.0134 | ±0.0166 | 0.9061 | 0.9400 | 11.17M | 12.1 min |
+| TinyVGG | 5 | 0.9225 ± 0.0057 | ±0.0071 | 0.9134 | 0.9274 | 0.14M | 4.5 min |
+| MiniCNN | 5 | 0.9000 ± 0.0034 | ±0.0043 | 0.8975 | 0.9060 | 0.11M | 3.9 min |
+
+What the seeds change about the story: the single-run claim that TinyVGG
+beats ResNet is **not supported**. The two confidence intervals overlap,
+and ResNet's seed-to-seed spread (0.906–0.940) is more than twice
+TinyVGG's. MiniCNN is clearly behind both. TinyVGG remains the best
+accuracy per parameter by a wide margin (80× fewer parameters than ResNet
+for a statistically indistinguishable result).
 
 ---
 
