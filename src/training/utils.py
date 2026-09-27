@@ -44,7 +44,9 @@ def ensure_cpu_conv_backend() -> bool:
     if not torch.backends.mkldnn.is_available() or not torch.backends.mkldnn.enabled:
         return False
     try:
-        torch.nn.functional.conv2d(torch.zeros(1, 1, 8, 8), torch.zeros(1, 1, 3, 3))
+        # Mirror a real first layer: a 1-in/1-out 8x8 probe passes on the
+        # affected hosts while multi-output-channel convs fail.
+        torch.nn.functional.conv2d(torch.zeros(2, 1, 28, 28), torch.zeros(16, 1, 3, 3), padding=1)
         return False
     except RuntimeError as e:
         if "primitive" not in str(e):

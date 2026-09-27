@@ -15,6 +15,7 @@ seaborn>=0.11.0
 tqdm>=4.60.0
 pillow>=9.0.0
 timm>=0.9.0
+opencv-python-headless>=4.8.0   # explainability / test imports
 # optional experiment mirrors
 # mlflow>=2.0.0
 # wandb>=0.14.0
