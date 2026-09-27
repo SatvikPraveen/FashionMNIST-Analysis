@@ -13,7 +13,7 @@ from torchvision import datasets, transforms
 from pathlib import Path
 import logging
 
-from src.training.reproducibility import seed_worker, make_generator
+from src.training.reproducibility import seed_worker, make_generator, split_indices
 
 logger = logging.getLogger(__name__)
 
@@ -214,12 +214,16 @@ def create_dataloaders(
         )
         
         # Split train into train/val (seeded so every run uses the same split)
-        train_size = int((1.0 - val_fraction) * len(train_dataset))
-        val_size = len(train_dataset) - train_size
-        split_kwargs = {"generator": make_generator(seed)} if seed is not None else {}
-        train_dataset, val_dataset = torch.utils.data.random_split(
-            train_dataset, [train_size, val_size], **split_kwargs
-        )
+        if seed is not None:
+            tr_idx, va_idx = split_indices(len(train_dataset), val_fraction, seed)
+            full = train_dataset
+            train_dataset = torch.utils.data.Subset(full, tr_idx)
+            val_dataset = torch.utils.data.Subset(full, va_idx)
+        else:
+            train_size = int((1.0 - val_fraction) * len(train_dataset))
+            train_dataset, val_dataset = torch.utils.data.random_split(
+                train_dataset, [train_size, len(train_dataset) - train_size]
+            )
         
     else:
         # Use CSV datasets

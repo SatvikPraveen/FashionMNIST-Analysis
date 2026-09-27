@@ -79,6 +79,56 @@ def load_model(model_path, model_name="ResNet", num_classes=10):
     return model
 
 
+def model_seed(model_path):
+    """The training seed of a checkpoint, from run.json or best_model_info.json, else None."""
+    d = os.path.dirname(os.path.abspath(model_path))
+    for name, key in (("run.json", ("params", "seed")), ("best_model_info.json", ("seed",))):
+        path = os.path.join(d, name)
+        if os.path.exists(path):
+            with open(path) as f:
+                value = json.load(f)
+            for k in key:
+                value = value.get(k) if isinstance(value, dict) else None
+            if value is not None:
+                return int(value)
+    return None
+
+
+def csv_split_seed(val_csv):
+    """The seed recorded by prepare_data in split.json next to the CSVs, else None."""
+    path = os.path.join(os.path.dirname(os.path.abspath(val_csv)), "split.json")
+    if os.path.exists(path):
+        with open(path) as f:
+            return json.load(f).get("seed")
+    return None
+
+
+def resolve_val_loader(model_path, val_csv, batch_size):
+    """
+    A validation loader for temperature scaling that the model did not train on.
+
+    The validation CSV is only held out for a model trained with the seed
+    that produced it (recorded in split.json). When the model's seed is known
+    and differs, its own validation split is rebuilt from that seed instead.
+    """
+    seed = model_seed(model_path)
+    csv_seed = csv_split_seed(val_csv) if val_csv else None
+    if val_csv and seed is not None and csv_seed == seed:
+        print(f"[INFO] Temperature scaling on {val_csv} (split seed {csv_seed} matches the model).")
+        return DataLoader(load_csv_to_dataset(val_csv), batch_size=batch_size, shuffle=False)
+    if seed is not None:
+        from src.data.dataset import create_dataloaders
+        print(f"[INFO] Temperature scaling on the model's own validation split (seed {seed}).")
+        _, val_loader, _ = create_dataloaders(use_torchvision=True, batch_size=batch_size, seed=seed)
+        return val_loader
+    if val_csv:
+        print(f"[WARN] The model's training seed is unknown, so {val_csv} may overlap its training "
+              f"data; the fitted temperature can be optimistic.")
+        return DataLoader(load_csv_to_dataset(val_csv), batch_size=batch_size, shuffle=False)
+    print("[INFO] No validation data: skipping temperature scaling.")
+    return None
+
+
 # Main function
 def main():
     parser = argparse.ArgumentParser(description="Evaluate pre-trained Fashion MNIST models.")
@@ -95,7 +145,9 @@ def main():
                         help="Also run calibration / per-class / robustness analysis "
                              "(writes analysis.json + figures).")
     parser.add_argument('--val_csv', type=str, default=None,
-                        help="Validation CSV used to fit temperature scaling (with --analysis).")
+                        help="Validation CSV for temperature scaling (with --analysis). Used only when "
+                             "its split seed matches the model's; otherwise the model's own validation "
+                             "split is rebuilt from its seed.")
     parser.add_argument('--no_robustness', action='store_true',
                         help="Skip the corruption sweep in --analysis (7 corruptions x 5 severities).")
     args = parser.parse_args()
@@ -156,10 +208,7 @@ def main():
 
     if args.analysis:
         print("\n🔬 Running calibration / per-class / robustness analysis...")
-        val_loader = None
-        if args.val_csv:
-            val_loader = DataLoader(load_csv_to_dataset(args.val_csv),
-                                    batch_size=args.batch_size, shuffle=False)
+        val_loader = resolve_val_loader(args.model_path, args.val_csv, args.batch_size)
         report = run_full_analysis(
             model, test_loader, device, out_dir=args.results_dir, val_loader=val_loader,
             class_names=class_names, robustness=not args.no_robustness,

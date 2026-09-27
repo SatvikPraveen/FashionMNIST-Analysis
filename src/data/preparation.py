@@ -80,43 +80,34 @@ def dataset_to_csv(dataset, output_path: str):
     logger.info(f"✅ Saved: {output_path} ({len(df)} samples, {df.shape[1]} columns)")
 
 
-def split_train_val(train_dataset, train_split: float = 0.8) -> tuple:
+def split_train_val(train_dataset, train_split: float = 0.8, seed: int = 42) -> tuple:
     """
-    Split training dataset into train and validation sets.
-    
+    Split the training dataset into train and validation sets.
+
+    Uses ``split_indices``, the same function training uses, so the
+    validation CSV contains exactly the images a model trained with the same
+    ``--seed`` never saw.
+
     Args:
         train_dataset: Full training dataset
         train_split (float): Fraction for training (rest for validation)
-        
+        seed (int): Split seed; must match the training seed to be held out
+
     Returns:
         Tuple of (train_data, val_data)
     """
-    total_samples = len(train_dataset)
-    train_size = int(total_samples * train_split)
-    
-    # Get all data
-    all_images = []
-    all_labels = []
-    
-    for img, label in train_dataset:
-        all_images.append(np.array(img).flatten())
-        all_labels.append(label)
-    
-    # Shuffle
-    indices = np.random.permutation(total_samples)
-    train_indices = indices[:train_size]
-    val_indices = indices[train_size:]
-    
-    # Split data
-    train_images = [all_images[i] for i in train_indices]
-    train_labels = [all_labels[i] for i in train_indices]
-    
-    val_images = [all_images[i] for i in val_indices]
-    val_labels = [all_labels[i] for i in val_indices]
-    
-    logger.info(f"Split: {len(train_images)} train, {len(val_images)} validation samples")
-    
-    return (train_images, train_labels), (val_images, val_labels)
+    from src.training.reproducibility import split_indices
+    train_indices, val_indices = split_indices(len(train_dataset), 1.0 - train_split, seed)
+
+    def take(indices):
+        images = [np.array(train_dataset[i][0]).flatten() for i in indices]
+        labels = [int(train_dataset[i][1]) for i in indices]
+        return images, labels
+
+    train = take(train_indices)
+    val = take(val_indices)
+    logger.info(f"Split (seed {seed}): {len(train[0])} train, {len(val[0])} validation samples")
+    return train, val
 
 
 def save_split_to_csv(images, labels, output_path: str):
@@ -151,16 +142,13 @@ def prepare_data(
     logger.info("FASHION MNIST DATA PREPARATION")
     logger.info("="*60)
     
-    # Set random seed
-    np.random.seed(random_seed)
-    
     # Download data
     train_dataset, test_dataset = download_fashion_mnist(data_dir)
     
     if save_csv:
         # Split train into train/val
         (train_images, train_labels), (val_images, val_labels) = split_train_val(
-            train_dataset, train_split
+            train_dataset, train_split, seed=random_seed
         )
         
         # Save to CSV
@@ -176,6 +164,14 @@ def prepare_data(
         test_labels = [label for _, label in test_dataset]
         save_split_to_csv(test_images, test_labels, test_csv)
         
+        # Record how the split was made, so evaluation can tell whether the
+        # validation CSV is held out for a given model (same seed) or not.
+        import json
+        with open(os.path.join(output_dir, "split.json"), "w") as fh:
+            json.dump({"seed": int(random_seed), "val_fraction": round(1.0 - train_split, 6),
+                       "n_train": len(train_labels), "n_val": len(val_labels),
+                       "n_test": len(test_labels)}, fh, indent=2)
+
         logger.info(f"\n📁 CSV files saved to: {output_dir}")
         logger.info(f"   - Train: {train_csv}")
         logger.info(f"   - Val:   {val_csv}")

@@ -73,6 +73,22 @@ def seed_worker(worker_id: int) -> None:
     random.seed(worker_seed)
 
 
+def split_indices(n: int, val_fraction: float, seed: int):
+    """
+    The train/validation split used everywhere in the project.
+
+    Returns ``(train_indices, val_indices)`` into a dataset of length ``n``.
+    It reproduces ``torch.utils.data.random_split(ds, [n_train, n_val],
+    generator=make_generator(seed))`` exactly (one ``randperm``, train first),
+    so runs made before this helper existed keep their splits, and the CSV
+    files from ``prepare_data`` hold the same validation images as training
+    with the same seed.
+    """
+    n_train = int((1.0 - val_fraction) * n)
+    perm = torch.randperm(n, generator=make_generator(seed)).tolist()
+    return perm[:n_train], perm[n_train:]
+
+
 def make_generator(seed: Optional[int]) -> Optional[torch.Generator]:
     """Return a CPU ``torch.Generator`` seeded with ``seed`` (or None)."""
     if seed is None:

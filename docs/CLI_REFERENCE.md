@@ -116,8 +116,9 @@ options:
   --batch_size BATCH_SIZE
   --analysis            Also run calibration / per-class / robustness analysis (writes
                         analysis.json + figures).
-  --val_csv VAL_CSV     Validation CSV used to fit temperature scaling (with
-                        --analysis).
+  --val_csv VAL_CSV     Validation CSV for temperature scaling (with --analysis). Used
+                        only when its split seed matches the model's; otherwise the
+                        model's own validation split is rebuilt from its seed.
   --no_robustness       Skip the corruption sweep in --analysis (7 corruptions x 5
                         severities).
 ```

@@ -42,10 +42,10 @@ python src/cli/prepare_data.py
 This downloads Fashion-MNIST to `data/` and writes seeded
 `fashion_mnist_{train,val,test}.csv` files to `data/processed/`: 48,000
 training and 12,000 validation images from the official training set, and the
-official 10,000-image test set. The evaluator reads these CSVs. Training does
-not need them: by default it reads the torchvision copy and makes its own
-seeded train/validation split (`--use-csv` trains on the CSV split instead).
-The two splits are different, which matters for temperature scaling below.
+official 10,000-image test set, plus `split.json` recording how the split was
+made. Training does not need the CSVs: it reads the torchvision copy. Both use
+the same split function, so for the same seed (`--seed`, default 42) the
+validation CSV contains exactly the images training held out.
 
 ## Train
 
@@ -116,11 +116,11 @@ fitted on `--val_csv`), per-class metrics, and accuracy under seven
 corruptions at five severities, with figures and an `analysis.json`.
 `--no_robustness` skips the corruption sweep, which is the slow part on a CPU.
 
-The temperature must be fitted on images the model did not train on. The CSV
-validation set is only held out for models trained with `--use-csv`; for
-models trained on the default torchvision split it overlaps their training
-data. For those, use `src/cli/analyze_runs.py`, which rebuilds each run's
-own validation split from its seed.
+The temperature must be fitted on images the model did not train on. The
+evaluator reads the model's training seed from its `run.json` and compares it
+with the seed in `split.json`: when they match it uses `--val_csv`, otherwise
+it rebuilds the model's own validation split from its seed. If the seed is
+unknown it warns that the CSV may overlap the training data.
 
 ## Run a study with several seeds
 
