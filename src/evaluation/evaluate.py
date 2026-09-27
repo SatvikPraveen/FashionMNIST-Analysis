@@ -33,6 +33,7 @@ from src.evaluation.metrics import (
 import json
 from src.models.architectures import ResNet, BasicBlock, MiniCNN, TinyVGG
 from src.models.registry import ModelSpec, build_from_spec, spec_path_for, resolve_name
+from src.evaluation.analysis import run_full_analysis, summarize_report, CLASS_NAMES
 
 # Auto-select best available device (CUDA > MPS > CPU)
 device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
@@ -89,6 +90,14 @@ def main():
                         help="Directory to save plots (confusion matrix, prediction grid).")
     parser.add_argument('--results_dir', type=str, default="results/evaluation_results",
                         help="Directory to save CSV outputs (predictions, metrics).")
+    parser.add_argument('--batch_size', type=int, default=256)
+    parser.add_argument('--analysis', action='store_true',
+                        help="Also run calibration / per-class / robustness analysis "
+                             "(writes analysis.json + figures).")
+    parser.add_argument('--val_csv', type=str, default=None,
+                        help="Validation CSV used to fit temperature scaling (with --analysis).")
+    parser.add_argument('--no_robustness', action='store_true',
+                        help="Skip the corruption sweep in --analysis (7 corruptions x 5 severities).")
     args = parser.parse_args()
 
     # Auto-detect architecture from best_model_info.json if --model_name not given
@@ -110,7 +119,7 @@ def main():
     # Load the test data
     print("🔄 Loading test data...")
     test_data = load_csv_to_dataset(args.test_csv)
-    test_loader = DataLoader(test_data, batch_size=32, shuffle=False)
+    test_loader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
     print(f"✅ Test data loaded: {len(test_data)} samples.")
 
     # Load the model
@@ -139,11 +148,25 @@ def main():
     print(f"✅ Prediction visualization successfully saved in {args.figures_dir}.")
     # Save confusion matrix and metrics
     print("\n🔄 Generating and saving confusion matrix and metrics...")
-    class_names = [str(i) for i in range(10)]  # Class names for Fashion MNIST (0-9)
+    class_names = list(CLASS_NAMES)
     save_confusion_matrix(true_labels, predictions, class_names, result_dir=args.figures_dir)
     save_metrics(true_labels, predictions, result_dir=args.results_dir)
     print(f"✅ Plots saved in {args.figures_dir}.")
     print(f"✅ CSVs saved in {args.results_dir}.")
+
+    if args.analysis:
+        print("\n🔬 Running calibration / per-class / robustness analysis...")
+        val_loader = None
+        if args.val_csv:
+            val_loader = DataLoader(load_csv_to_dataset(args.val_csv),
+                                    batch_size=args.batch_size, shuffle=False)
+        report = run_full_analysis(
+            model, test_loader, device, out_dir=args.results_dir, val_loader=val_loader,
+            class_names=class_names, robustness=not args.no_robustness,
+            figures_dir=args.figures_dir,
+        )
+        print(summarize_report(report))
+        print(f"✅ analysis.json written to {args.results_dir}")
 
 
 if __name__ == "__main__":
