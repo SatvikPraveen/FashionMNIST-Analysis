@@ -1,0 +1,19 @@
+# The two best pretrained backbones (legacy pipeline: ViT-Tiny 0.9525,
+# ConvNeXt-Tiny 0.9506) re-run on the fixed augmentation pipeline, with and
+# without random crop. Same hyper-parameters and seeds 0-2 as the
+# 'pretrained' variant of sweeps/backbones.yaml. 2 x 2 x 3 = 12 runs.
+name: backbones_fixed
+output_root: runs/backbones_fixed
+models: [vit_tiny, convnext_tiny]
+seeds: [0, 1, 2]
+base_args: ["--amp", "--epochs", "30"]
+variants:
+  pretrained:
+    model.pretrained: true
+    training.learning_rate: 3.0e-4
+    training.optimizer: adamw
+  pretrained_no_crop:
+    model.pretrained: true
+    training.learning_rate: 3.0e-4
+    training.optimizer: adamw
+    augmentation.random_crop: false

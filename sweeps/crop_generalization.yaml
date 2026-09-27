@@ -1,0 +1,13 @@
+# Does "random crop hurts" (TinyVGG, fixed pipeline, p = 0.055) generalise to
+# the other two CNNs? Only the no-crop arm is run: the with-crop arm is
+# sweeps/baseline_fixed.yaml, which used the same seeds 0-4 and recipe, so
+#   aggregate.py runs/baseline_fixed runs/crop_generalization --baseline 'resnet|default'
+# pairs them seed by seed. 2 models x 5 seeds = 10 runs.
+name: crop_generalization
+output_root: runs/crop_generalization
+models: [minicnn, resnet]
+seeds: [0, 1, 2, 3, 4]
+base_args: ["--amp"]
+variants:
+  no_crop:
+    augmentation.random_crop: false
