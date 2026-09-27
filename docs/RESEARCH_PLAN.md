@@ -1,8 +1,8 @@
 # Research plan: what does a modern training recipe buy on a small grayscale benchmark?
 
 **Status (2026-09-27):** infrastructure complete and running on a SLURM GPU cluster.
-Q1, Q3 and Q4 answered; Q2, the crop confirmation, Q5 and seed ensembles
-are running. Full result tables live in the README and `results/sweeps/`.
+Q1–Q5 and seed ensembles answered on the legacy augmentation pipeline;
+an augmentation bug was found and the affected sweeps are being re-run. Full result tables live in the README and `results/sweeps/`.
 
 Fashion-MNIST is small enough to run hundreds of controlled experiments and
 well-studied enough that the literature gives clear reference points
@@ -37,7 +37,7 @@ set**, evaluated **once** from the best-validation checkpoint.
 | Q3 | Padded random crop **hurts** TinyVGG: removing it gains +0.95 points (paired, p = 0.018, 5/5 seeds). No other single component is detectable at n = 5; the whole recipe is worth only +0.65 points over none (p = 0.127). | `results/sweeps/augmentation_ablation_*` |
 | Q3b | Running: `crop_confirmation.yaml` repeats the crop test on all three CNNs with fresh seeds 5–9 and a 150-epoch budget, to separate a real penalty from under-training. | job 488421 |
 | Q4 | The default LR 1e-3 / WD 1e-4 is optimal; LR 3e-4 is equivalent, LR 3e-3 costs 3–4 points, WD 5e-4 loses on every seed. | `results/sweeps/lr_grid_*` |
-| Q2 | Running. Early sign: pretrained ResNet-18 at 64 px reached 0.939 validation accuracy by epoch 25, above every custom CNN. | job 488358 |
+| Q2 | Pretraining helps every family (paired, p ≤ 0.028, 3/3 seeds each): ViT-Tiny +15.6, EfficientNet-B0 +3.8, ConvNeXt-Tiny +3.2, ResNet-18 +1.3 points. Best model overall: pretrained ViT-Tiny, 0.9525 ± 0.0025. ViT from scratch collapses (0.80). | `results/sweeps/backbones_*` |
 | Q5 | Running: `src/cli/analyze_runs.py` over the baseline and ablation checkpoints. | jobs 488426, 488427 |
 
 Statistical note added during the study: because sweeps reuse seeds across

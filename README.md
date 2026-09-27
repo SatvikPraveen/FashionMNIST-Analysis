@@ -299,6 +299,29 @@ crop's padding turned out to be mid-grey rather than black, and applied
 per batch rather than per image (see the warning above). The crop result is
 therefore most likely a symptom of the bug, and is being re-tested.
 
+### Pretrained timm backbones vs training from scratch (3 seeds each, 2026-09-27, legacy pipeline)
+
+ImageNet weights via timm, grayscale input via `in_chans=1`, 28 px images
+upsampled to 64 px (CNNs) or 224 px (ViT), AdamW, 30 epochs, bf16. Paired by
+seed against the same backbone trained from scratch
+([summary](results/sweeps/backbones_summary.md), [runs](results/sweeps/backbones_runs.csv)).
+
+| Backbone | Params | Pretrained | From scratch | Δ from pretraining (paired) | p | Time / run |
+|---|---|---|---|---|---|---|
+| ViT-Tiny/16 (224 px) | 5.4M | **0.9525 ± 0.0025** | 0.7965 ± 0.0461 | +0.1560 | 0.028 | 15 min |
+| ConvNeXt-Tiny | 27.8M | 0.9506 ± 0.0012 | 0.9189 ± 0.0014 | +0.0317 | 0.002 | 19 min |
+| EfficientNet-B0 | 4.0M | 0.9397 ± 0.0021 | 0.9020 ± 0.0084 | +0.0377 | 0.011 | 18 min |
+| ResNet-18 | 11.2M | 0.9341 ± 0.0019 | 0.9208 ± 0.0026 | +0.0133 | 0.019 | 7 min |
+
+**Findings.** ImageNet pretraining helps every family on every seed, even on
+28 px grayscale clothing, and the pretrained ViT-Tiny is the most accurate
+model in the study (≈ 2.7 points above the best custom CNN) at only 5.4M
+parameters. Trained from scratch the same ViT collapses to 0.80 and is very
+unstable across seeds, the familiar result that ViTs lack the inductive bias
+to learn well from 48k small images alone. Among from-scratch models none
+beats the custom ResNet-18 (0.9256), so on this dataset *pretraining*, not
+architecture, is what moves accuracy past ~93%.
+
 ### Seed ensembles (5 members per group, 2026-09-27, legacy pipeline)
 
 Softmax average of the five seed checkpoints of each group on the official
