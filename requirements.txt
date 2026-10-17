@@ -10,8 +10,8 @@ pyyaml>=6.0.3
 scikit-learn>=1.7.2
 
 # Deep Learning (PyTorch)
-torch>=2.14.1
-torchvision>=0.29.1
+torch>=2.6.0
+torchvision>=0.21.0
 pillow>=12.3.0
 
 # Transfer Learning & SOTA Models
