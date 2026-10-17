@@ -6,11 +6,11 @@
 #   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
 # then:
 #   pip install -r cluster/requirements-cluster.txt
-numpy>=2.5.3
-pandas>=3.0.6
+numpy>=2.2.6
+pandas>=2.3.3
 pyyaml>=6.0.3
-scikit-learn>=1.9.1
-matplotlib>=3.11.2
+scikit-learn>=1.7.2
+matplotlib>=3.10.9
 seaborn>=0.13.2
 tqdm>=4.70.1
 pillow>=12.3.0
