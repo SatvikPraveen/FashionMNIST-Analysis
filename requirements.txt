@@ -10,13 +10,13 @@ pyyaml>=6.0.3
 scikit-learn>=1.7.2
 
 # Deep Learning (PyTorch)
-torch>=2.6.0
-torchvision>=0.21.0
+torch>=2.14.1
+torchvision>=0.29.2
 pillow>=12.3.0
 
 # Transfer Learning & SOTA Models
 timm>=1.0.30
-transformers>=5.19.0
+transformers>=5.20.2
 
 # Explainability & Interpretability
 grad-cam>=1.5.7
@@ -46,21 +46,21 @@ albumentations>=2.0.8
 imgaug>=0.4.0
 
 # MLOps & Monitoring
-mlflow>=3.17.0
-wandb>=0.30.0
+mlflow>=3.17.2
+wandb>=0.31.0
 prometheus-client>=0.26.0
 
 # Web Frameworks & APIs
-fastapi>=0.143.0
+fastapi>=0.162.0
 uvicorn[standard]>=0.54.0
-pydantic>=2.14.0
+pydantic>=2.14.1
 python-multipart>=0.0.32
 
 # Dashboard & Visualization
 streamlit>=1.65.0
-gradio>=6.29.1
+gradio>=6.31.0
 
 # Testing
-pytest>=9.1.1
+pytest>=9.2.0
 pytest-cov>=7.1.0
 httpx>=0.28.1         # FastAPI TestClient (tests/test_api.py)
