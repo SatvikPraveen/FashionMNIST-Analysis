@@ -20,4 +20,4 @@ opencv-python-headless>=5.0.0.93   # explainability / test imports
 # mlflow>=2.0.0
 # wandb>=0.14.0
 # tests
-pytest>=9.1.1
+pytest>=9.2.0
